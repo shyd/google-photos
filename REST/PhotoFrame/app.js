@@ -91,6 +91,7 @@ const sessionMiddleware = session({
   saveUninitialized: true,
   store: new fileStore({}),
   secret: 'photo frame sample',
+  cookie: { maxAge: 60000*24 },
 });
 
 // Console transport for winton.
