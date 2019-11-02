@@ -75,7 +75,7 @@ albumCache.init();
 // but resubmitting the search query ensures that the photo frame displays
 // any new images that match the search criteria (or that have been added
 // to an album).
-const storage = persist.create({dir: 'persist-storage/'});
+const storage = persist.create({dir: '/data/persist-storage/'});
 storage.init();
 
 // Set up OAuth 2.0 authentication through the passport.js library.
@@ -89,9 +89,12 @@ auth(passport);
 const sessionMiddleware = session({
   resave: true,
   saveUninitialized: true,
-  store: new fileStore({}),
+  store: new fileStore({
+    ttl: 60*60*24*365*30, // 30 years
+    path: '/data/sessions'
+  }),
   secret: 'photo frame sample',
-  cookie: { maxAge: 60000*60*24 },
+  cookie: { maxAge: 60000*60*24*365*30 }, // 30 years
 });
 
 // Console transport for winton.
