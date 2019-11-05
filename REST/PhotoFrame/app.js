@@ -197,6 +197,7 @@ app.get('/auth/google', passport.authenticate('google', {
   scope: config.scopes,
   failureFlash: true,  // Display errors to the user.
   session: true,
+  accessType: 'offline',
 }));
 
 // Callback receiver for the OAuth process after log in.
@@ -220,6 +221,12 @@ app.get('/search', (req, res) => {
 // This page displays a list of albums owned by the user.
 app.get('/album', (req, res) => {
   renderIfAuthenticated(req, res, 'pages/album');
+});
+
+// Loads the slideshow page if the user is authenticated.
+// This page displays a slideshow of the selected images.
+app.get('/slideshow', (req, res) => {
+  renderIfAuthenticated(req, res, 'pages/slideshow');
 });
 
 

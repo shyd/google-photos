@@ -26,5 +26,38 @@ module.exports = (passport) => {
         // Set the correct profile URL that does not require any additional APIs
         userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo'
       },
-      (token, refreshToken, profile, done) => done(null, {profile, token})));
+      (accessToken, refreshToken, profile, done) => done(null, {profile, accessToken, refreshToken})));
 };
+
+
+
+
+
+/*
+const config = require('./config.js');
+const refresh = require('passport-oauth2-refresh');
+const GoogleOAuthStrategy = require('passport-google-oauth20').Strategy;
+module.exports = (passport) => {
+    passport.serializeUser((user, done) => done(null, user));
+    passport.deserializeUser((user, done) => done(null, user));
+
+    var strategy = new GoogleOAuthStrategy(
+        {
+            clientID: config.oAuthClientID,
+            clientSecret: config.oAuthclientSecret,
+            callbackURL: config.oAuthCallbackUrl,
+            // Set the correct profile URL that does not require any additional APIs
+            userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo'
+        },
+        //(accessToken, refreshToken, profile, done) => done(null, {profile, accessToken, refreshToken}));
+    function(accessToken, refreshToken, params, profile, done) {
+        console.log('accessToken', accessToken);
+        console.log('refreshToken', refreshToken);
+        console.log('params', params);
+        console.log('profile', profile);
+        return done(null, {profile, accessToken, refreshToken});
+        }
+    );
+    passport.use(strategy);
+    //refresh.use(strategy);
+};//*/
