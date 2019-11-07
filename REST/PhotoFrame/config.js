@@ -57,4 +57,10 @@ config.albumPageSize = 50;
 // The API end point to use. Do not change.
 config.apiEndpoint = 'https://photoslibrary.googleapis.com';
 
+// The path for persistent data
+config.dataPath = '/data';
+if (process.env.DATA_PATH !== undefined) {
+    config.dataPath = process.env.DATA_PATH;
+}
+
 module.exports = config;
