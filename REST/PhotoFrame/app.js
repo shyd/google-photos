@@ -28,6 +28,7 @@ const session = require('express-session');
 const sessionFileStore = require('session-file-store');
 const uuid = require('uuid');
 const winston = require('winston');
+const refresh = require('passport-oauth2-refresh');
 
 const app = express();
 const fileStore = sessionFileStore(session);
@@ -81,7 +82,7 @@ storage.init();
 // Set up OAuth 2.0 authentication through the passport.js library.
 const passport = require('passport');
 const auth = require('./auth');
-auth(passport);
+auth(passport, refresh);
 
 // Set up a session middleware to handle user sessions.
 // NOTE: A secret is used to sign the cookie. This is just used for this sample
@@ -238,7 +239,8 @@ app.get('/slideshow', (req, res) => {
 // Returns a list of media items if the search was successful, or an error
 // otherwise.
 app.post('/loadFromSearch', async (req, res) => {
-  const authToken = req.user.token;
+  const authToken = req.user.accessToken;
+  const refreshToken = req.user.refreshToken;
 
   logger.info('Loading images from search.');
   logger.silly('Received form data: ', req.body);
@@ -280,7 +282,7 @@ app.post('/loadFromSearch', async (req, res) => {
   const parameters = {filters};
 
   // Submit the search request to the API and wait for the result.
-  const data = await libraryApiSearch(authToken, parameters);
+  const data = await libraryApiSearch(authToken, refreshToken, parameters, req);
 
   // Return and cache the result and parameters.
   const userId = req.user.profile.id;
@@ -295,7 +297,8 @@ app.post('/loadFromSearch', async (req, res) => {
 app.post('/loadFromAlbum', async (req, res) => {
   const albumId = req.body.albumId;
   const userId = req.user.profile.id;
-  const authToken = req.user.token;
+  const authToken = req.user.accessToken;
+  const refreshToken = req.user.refreshToken;
 
   logger.info(`Importing album: ${albumId}`);
 
@@ -306,7 +309,7 @@ app.post('/loadFromAlbum', async (req, res) => {
   const parameters = {albumId};
 
   // Submit the search request to the API and wait for the result.
-  const data = await libraryApiSearch(authToken, parameters);
+  const data = await libraryApiSearch(authToken, refreshToken, parameters, req);
 
   returnPhotos(res, userId, data, parameters)
 });
@@ -326,7 +329,7 @@ app.get('/getAlbums', async (req, res) => {
     logger.verbose('Loading albums from API.');
     // Albums not in cache, retrieve the albums from the Library API
     // and return them
-    const data = await libraryApiGetAlbums(req.user.token);
+    const data = await libraryApiGetAlbums(req.user.accessToken, req.user.refreshToken, req);
     if (data.error) {
       // Error occured during the request. Albums could not be loaded.
       returnError(res, data);
@@ -351,7 +354,8 @@ app.get('/getAlbums', async (req, res) => {
 // are resubmitted to the API and the result returned.
 app.get('/getQueue', async (req, res) => {
   const userId = req.user.profile.id;
-  const authToken = req.user.token;
+  const authToken = req.user.accessToken;
+  const refreshToken = req.user.refreshToken;
 
   logger.info('Loading queue.');
 
@@ -373,7 +377,7 @@ app.get('/getQueue', async (req, res) => {
     // the result.
     logger.verbose(
         `Resubmitting filter search ${JSON.stringify(stored.parameters)}`);
-    const data = await libraryApiSearch(authToken, stored.parameters);
+    const data = await libraryApiSearch(authToken, refreshToken, stored.parameters, req);
     returnPhotos(res, userId, data, stored.parameters);
   } else {
     // No data is stored yet for the user. Return an empty response.
@@ -455,7 +459,7 @@ function constructDate(year, month, day) {
 // This function makes multiple calls to the API to load at least as many photos
 // as requested. This may result in more items being listed in the response than
 // originally requested.
-async function libraryApiSearch(authToken, parameters) {
+async function libraryApiSearch(authToken, refreshToken, parameters, req) {
   let photos = [];
   let nextPageToken = null;
   let error = null;
@@ -465,6 +469,10 @@ async function libraryApiSearch(authToken, parameters) {
   try {
     // Loop while the number of photos threshold has not been met yet
     // and while there is a nextPageToken to load more items.
+    refresh.requestNewAccessToken('google', refreshToken, function(err, accessToken, refreshToken) {
+      console.log('refresh.requestNewAccessToken', accessToken, refreshToken);
+      req.user.accessToken = accessToken;
+    });
     do {
       logger.info(
           `Submitting search with parameters: ${JSON.stringify(parameters)}`);
@@ -520,13 +528,17 @@ async function libraryApiSearch(authToken, parameters) {
 
 // Returns a list of all albums owner by the logged in user from the Library
 // API.
-async function libraryApiGetAlbums(authToken) {
+async function libraryApiGetAlbums(authToken, refreshToken, req) {
   let albums = [];
   let nextPageToken = null;
   let error = null;
   let parameters = {pageSize: config.albumPageSize};
 
   try {
+    refresh.requestNewAccessToken('google', refreshToken, function(err, accessToken, refreshToken) {
+      console.log('refresh.requestNewAccessToken', accessToken, refreshToken);
+      req.user.accessToken = accessToken;
+    });
     // Loop while there is a nextpageToken property in the response until all
     // albums have been listed.
     do {
