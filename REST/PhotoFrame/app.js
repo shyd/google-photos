@@ -511,11 +511,16 @@ async function libraryApiSearch(authToken, refreshToken, parameters, req, retrie
 
   } catch (err) {
     if (err.statusCode === 401 && retries > 0) {
-      await refresh.requestNewAccessToken('google', refreshToken, async function(err, accessToken, refreshToken) {
-        req.user.accessToken = accessToken;
-        logger.info('Got new Access Token.');
-        return await libraryApiSearch(accessToken, refreshToken, parameters, req, --retries);
+      let result = {};
+      let promiseRequestNew = new Promise(function (resolve, reject) {
+        refresh.requestNewAccessToken('google', refreshToken, async function(err, accessToken, refreshToken) {
+          logger.info('Got new Access Token.');
+          req.user.accessToken = accessToken;
+          const result = await libraryApiSearch(accessToken, refreshToken, parameters, req, --retries);
+          resolve(result);
+        });
       });
+      return result;
     }
     // If the error is a StatusCodeError, it contains an error.error object that
     // should be returned. It has a name, statuscode and message in the correct
@@ -567,11 +572,20 @@ async function libraryApiGetAlbums(authToken, refreshToken, req, retries = confi
 
   } catch (err) {
     if (err.statusCode === 401 && retries > 0) {
-      await refresh.requestNewAccessToken('google', refreshToken, async function(err, accessToken, refreshToken) {
-        req.user.accessToken = accessToken;
-        logger.info('Got new Access Token.');
-        return await libraryApiGetAlbums(accessToken, refreshToken, req, --retries);
+      let result = {};
+      let promiseRequestNew = new Promise(function (resolve, reject) {
+        refresh.requestNewAccessToken('google', refreshToken, {}, async function(err, accessToken, refreshToken) {
+          req.user.accessToken = accessToken;
+          logger.info('Got new Access Token.');
+          const result = await libraryApiGetAlbums(accessToken, refreshToken, req, --retries);
+          resolve(result);
+        })
       });
+      console.log("before promise");
+      await promiseRequestNew.then(function (res) {
+        result = res;
+      });
+      return result;
     }
     // If the error is a StatusCodeError, it contains an error.error object that
     // should be returned. It has a name, statuscode and message in the correct
