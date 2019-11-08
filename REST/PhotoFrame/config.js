@@ -63,4 +63,7 @@ if (process.env.DATA_PATH !== undefined) {
     config.dataPath = process.env.DATA_PATH;
 }
 
+// Number of maximum retries to refresh the access token
+config.maxRetries = 3;
+
 module.exports = config;

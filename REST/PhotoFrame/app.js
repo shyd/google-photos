@@ -459,7 +459,7 @@ function constructDate(year, month, day) {
 // This function makes multiple calls to the API to load at least as many photos
 // as requested. This may result in more items being listed in the response than
 // originally requested.
-async function libraryApiSearch(authToken, refreshToken, parameters, req) {
+async function libraryApiSearch(authToken, refreshToken, parameters, req, retries = config.maxRetries) {
   let photos = [];
   let nextPageToken = null;
   let error = null;
@@ -469,10 +469,6 @@ async function libraryApiSearch(authToken, refreshToken, parameters, req) {
   try {
     // Loop while the number of photos threshold has not been met yet
     // and while there is a nextPageToken to load more items.
-    refresh.requestNewAccessToken('google', refreshToken, function(err, accessToken, refreshToken) {
-      console.log('refresh.requestNewAccessToken', accessToken, refreshToken);
-      req.user.accessToken = accessToken;
-    });
     do {
       logger.info(
           `Submitting search with parameters: ${JSON.stringify(parameters)}`);
@@ -514,6 +510,13 @@ async function libraryApiSearch(authToken, refreshToken, parameters, req) {
              parameters.pageToken != null);
 
   } catch (err) {
+    if (err.statusCode === 401 && retries > 0) {
+      await refresh.requestNewAccessToken('google', refreshToken, async function(err, accessToken, refreshToken) {
+        req.user.accessToken = accessToken;
+        logger.info('Got new Access Token.');
+        return await libraryApiSearch(accessToken, refreshToken, parameters, req, --retries);
+      });
+    }
     // If the error is a StatusCodeError, it contains an error.error object that
     // should be returned. It has a name, statuscode and message in the correct
     // format. Otherwise extract the properties.
@@ -528,17 +531,13 @@ async function libraryApiSearch(authToken, refreshToken, parameters, req) {
 
 // Returns a list of all albums owner by the logged in user from the Library
 // API.
-async function libraryApiGetAlbums(authToken, refreshToken, req) {
+async function libraryApiGetAlbums(authToken, refreshToken, req, retries = config.maxRetries) {
   let albums = [];
   let nextPageToken = null;
   let error = null;
   let parameters = {pageSize: config.albumPageSize};
 
   try {
-    refresh.requestNewAccessToken('google', refreshToken, function(err, accessToken, refreshToken) {
-      console.log('refresh.requestNewAccessToken', accessToken, refreshToken);
-      req.user.accessToken = accessToken;
-    });
     // Loop while there is a nextpageToken property in the response until all
     // albums have been listed.
     do {
@@ -567,6 +566,13 @@ async function libraryApiGetAlbums(authToken, refreshToken, req) {
     } while (parameters.pageToken != null);
 
   } catch (err) {
+    if (err.statusCode === 401 && retries > 0) {
+      await refresh.requestNewAccessToken('google', refreshToken, async function(err, accessToken, refreshToken) {
+        req.user.accessToken = accessToken;
+        logger.info('Got new Access Token.');
+        return await libraryApiGetAlbums(accessToken, refreshToken, req, --retries);
+      });
+    }
     // If the error is a StatusCodeError, it contains an error.error object that
     // should be returned. It has a name, statuscode and message in the correct
     // format. Otherwise extract the properties.
