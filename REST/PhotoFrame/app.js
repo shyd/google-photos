@@ -520,6 +520,9 @@ async function libraryApiSearch(authToken, refreshToken, parameters, req, retrie
           resolve(result);
         });
       });
+      await promiseRequestNew.then(function (res) {
+        result = res;
+      });
       return result;
     }
     // If the error is a StatusCodeError, it contains an error.error object that
