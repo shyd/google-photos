@@ -237,8 +237,6 @@ p .gp-button {
   z-index: 999;
   background-size: cover;
   background-position: center;
-  -webkit-transition: background-image 366ms ease-in-out;
-  transition: background-image 366ms ease-in-out;
 }
 
 .fullscreen {

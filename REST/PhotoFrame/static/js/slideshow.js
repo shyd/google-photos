@@ -4,7 +4,7 @@ function instantInterval(handler, timeout) {
   setInterval(handler, timeout);
 }
 
-function loadSlideshow(source, mediaItems) {
+function loadSlideshow(source, mediaItems, interval) {
   $('#slideshow-container').empty();
 
   // Display the length and the source of the items if set.
@@ -29,7 +29,6 @@ function loadSlideshow(source, mediaItems) {
   let pos = 0;
   instantInterval(function () {
     const image = mediaItems[pos++%mediaItems.length];
-    //const fullUrl = `${image.baseUrl}=w${image.mediaMetadata.width}-h${image.mediaMetadata.height}`;
     const fullUrl = `${image.baseUrl}=w1920`;
     console.log('trigger preload');
     const img = new Image();
@@ -38,7 +37,7 @@ function loadSlideshow(source, mediaItems) {
       $('#slideshow-container').css('backgroundImage', 'url('+fullUrl+')');
       console.log('Set current image');
     };
-  }, 10000);
+  }, interval*1000);
 }
 
 // Makes a backend request to display the queue of photos currently loaded into
@@ -53,8 +52,9 @@ function loadQueue() {
     success: (data) => {
       // Queue has been loaded. Display the media items as a grid on screen.
       hideLoadingDialog();
-      //showPreview(data.parameters, data.photos);
-      loadSlideshow(data.parameters, data.photos);
+      $('#slideshow-container').css('-webkit-transition', 'background-image '+data.config.duration+'ms ease-in-out');
+      $('#slideshow-container').css('transition', 'background-image '+data.config.duration+'ms ease-in-out');
+      loadSlideshow(data.parameters, data.photos, data.config.interval);
       hideLoadingDialog();
       console.log('Loaded queue.');
     },

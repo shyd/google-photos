@@ -224,6 +224,10 @@ app.get('/album', (req, res) => {
   renderIfAuthenticated(req, res, 'pages/album');
 });
 
+app.get('/config', (req, res) => {
+  renderIfAuthenticated(req, res, 'pages/config');
+});
+
 // Loads the slideshow page if the user is authenticated.
 // This page displays a slideshow of the selected images.
 app.get('/slideshow', (req, res) => {
@@ -369,9 +373,15 @@ app.get('/getQueue', async (req, res) => {
   const stored = await storage.getItem(userId);
 
   if (cachedPhotos) {
+    const storedConfig = await storage.getItem(userId+'.config');
+    if (storedConfig && storedConfig.config) {
+      stored.config = storedConfig.config;
+    } else {
+      stored.config = {duration: 366, interval: 30};
+    }
     // Items are still cached. Return them.
     logger.verbose('Returning cached photos.');
-    res.status(200).send({photos: cachedPhotos, parameters: stored.parameters});
+    res.status(200).send({photos: cachedPhotos, parameters: stored.parameters, config: stored.config});
   } else if (stored && stored.parameters) {
     // Items are no longer cached. Resubmit the stored search query and return
     // the result.
@@ -387,7 +397,35 @@ app.get('/getQueue', async (req, res) => {
   }
 });
 
+app.get('/getConfig', async (req, res) => {
+  const userId = req.user.profile.id;
 
+  logger.info('Loading Config.');
+
+  const stored = await storage.getItem(userId+'.config');
+
+  if (stored && stored.config) {
+    // Items are still cached. Return them.
+    logger.verbose(`Returning Config. ${JSON.stringify(stored.config)}`);
+    res.status(200).send({config: stored.config});
+  } else {
+    // No data is stored yet for the user. Return an empty response.
+    // The user is likely new.
+    logger.verbose('No config data.');
+    res.status(200).send({config: {duration: 366, interval: 30}});
+  }
+});
+
+app.post('/saveConfig', async (req, res) => {
+  const userId = req.user.profile.id;
+  const config = req.body.config;
+
+  logger.info(`Saving config: ${config}`);
+
+  storage.setItemSync(userId+'.config', {config: config});
+
+  res.status(200).send({});
+});
 
 // Start the server
 server.listen(config.port, () => {
