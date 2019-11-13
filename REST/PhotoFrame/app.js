@@ -322,6 +322,9 @@ app.post('/loadFromAlbum', async (req, res) => {
   // Submit the search request to the API and wait for the result.
   const data = await libraryApiSearch(authToken, refreshToken, parameters, req);
 
+  // trigger preload
+  preloadPhotos(authToken, refreshToken, userId, data.photos, req);
+
   returnPhotos(res, userId, data, parameters)
 });
 
