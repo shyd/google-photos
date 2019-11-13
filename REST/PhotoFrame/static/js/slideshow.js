@@ -4,57 +4,47 @@ function instantInterval(handler, timeout) {
   setInterval(handler, timeout);
 }
 
-function loadSlideshow(source, mediaItems, interval) {
+function loadSlideshow(interval) {
   $('#slideshow-container').empty();
-
-  // Display the length and the source of the items if set.
-  if (source && mediaItems) {
-    $('#images-count').text(mediaItems.length);
-    $('#images-source').text(JSON.stringify(source));
-    $('#preview-description').show();
-  } else {
-    $('#images-count').text(0);
-    $('#images-source').text('No photo search selected');
-    $('#preview-description').hide();
-  }
-
-  // Show an error message and disable the slideshow button if no items are
-  // loaded.
-  if (!mediaItems || !mediaItems.length) {
-    $('#images_empty').show();
-  } else {
-    $('#images_empty').hide();
-  }
 
   let pos = 0;
   instantInterval(function () {
-    const image = mediaItems[pos++%mediaItems.length];
-    const fullUrl = `${image.baseUrl}=w1920`;
-    console.log('trigger preload');
-    const img = new Image();
-    img.src = fullUrl;
-    img.onload = function () {
-      $('#slideshow-container').css('backgroundImage', 'url('+fullUrl+')');
-      console.log('Set current image');
-    };
+    $.ajax({
+      type: 'GET',
+      url: '/getNextMedia',
+      dataType: 'json',
+      success: (data) => {
+        console.log('trigger preload');
+        const img = new Image();
+        const url = '/getNextMedia/' + data.filename;
+        img.src = url;
+        img.onload = function () {
+          $('#slideshow-container').css('backgroundImage', 'url('+url+')');
+          console.log('Set current image');
+        };
+      },
+      error: (data) => {
+        console.error('Could not load next media', data)
+      }
+    });
   }, interval*1000);
 }
 
 // Makes a backend request to display the queue of photos currently loaded into
 // the photo frame. The backend returns a list of media items that the user has
 // selected. They are rendered in showPreview(..).
-function loadQueue() {
+function initSlideshow() {
   showLoadingDialog();
   $.ajax({
     type: 'GET',
-    url: '/getQueue',
+    url: '/getConfig',
     dataType: 'json',
     success: (data) => {
       // Queue has been loaded. Display the media items as a grid on screen.
       hideLoadingDialog();
       $('#slideshow-container').css('-webkit-transition', 'background-image '+data.config.duration+'ms ease-in-out');
       $('#slideshow-container').css('transition', 'background-image '+data.config.duration+'ms ease-in-out');
-      loadSlideshow(data.parameters, data.photos, data.config.interval);
+      loadSlideshow(data.config.interval);
       hideLoadingDialog();
       console.log('Loaded queue.');
     },
@@ -67,7 +57,7 @@ function loadQueue() {
 
 $(document).ready(() => {
   // Load the queue of photos selected by the user for the photo
-  loadQueue();
+  initSlideshow();
 
   // Clicking the 'view fullscreen' button opens the gallery from the first
   // image.

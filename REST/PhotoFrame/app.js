@@ -29,6 +29,9 @@ const sessionFileStore = require('session-file-store');
 const uuid = require('uuid');
 const winston = require('winston');
 const refresh = require('passport-oauth2-refresh');
+const Buffer = require('buffer').Buffer;
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const fileStore = sessionFileStore(session);
@@ -78,6 +81,10 @@ albumCache.init();
 // to an album).
 const storage = persist.create({dir: config.dataPath+'/persist-storage/'});
 storage.init();
+
+// persistant storage to store search data for slideshow and allow offline display
+const mediaItemStorage = persist.create({dir: config.dataPath+'/persist-mediaitemstorage/'});
+mediaItemStorage.init();
 
 // Set up OAuth 2.0 authentication through the passport.js library.
 const passport = require('passport');
@@ -388,6 +395,10 @@ app.get('/getQueue', async (req, res) => {
     logger.verbose(
         `Resubmitting filter search ${JSON.stringify(stored.parameters)}`);
     const data = await libraryApiSearch(authToken, refreshToken, stored.parameters, req);
+
+    // trigger preload
+    preloadPhotos(authToken, refreshToken, userId, data.photos, req);
+
     returnPhotos(res, userId, data, stored.parameters);
   } else {
     // No data is stored yet for the user. Return an empty response.
@@ -489,6 +500,118 @@ function constructDate(year, month, day) {
   if (month) date.month = month;
   if (day) date.day = day;
   return date;
+}
+
+// Download new photos in album or search and delete removed media
+async function preloadPhotos(authToken, refreshToken, userId, mediaItems, request) {
+  const storageDir = config.dataPath+'/persist-mediaitemstorage/';
+  let somethingChanged = false;
+  await fs.mkdir(storageDir + userId, () => {});
+  for (let i = 0; i < mediaItems.length; i++) {
+    const item = mediaItems[i];
+    if (!fs.existsSync(storageDir + userId + '/' + item.id + '.jpg')) {
+      await libraryApiGetMedia(authToken, refreshToken, item.baseUrl, item.id, userId, request);
+      somethingChanged = true;
+    }
+  }
+  const ls = fs.readdirSync(storageDir + userId);
+  for (let i = 0; i < ls.length; i++) {
+    let exists = false;
+    for (let j = 0; j < mediaItems.length; j++) {
+      if (ls[i].startsWith(mediaItems[j].id)) {
+        exists = true;
+      }
+    }
+    if (!exists) {
+      fs.unlinkSync(storageDir + userId + '/' + ls[i]);
+      logger.info('Cleanup file: ' + ls[i]);
+      somethingChanged = true;
+    }
+  }
+  if (somethingChanged) {
+    createQueueCached(mediaItems, userId);
+  }
+}
+
+async function createQueueCached(mediaItems, userId) {
+  // shuffle array
+  for (let i = mediaItems.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * i);
+    const temp = mediaItems[i];
+    mediaItems[i] = mediaItems[j];
+    mediaItems[j] = temp;
+  }
+  await mediaItemStorage.setItem(userId, {mediaItems: mediaItems, position: 0});
+}
+
+app.get('/getNextMedia', async (req, res) => {
+  const userId = req.user.profile.id;
+  logger.info('Loading next Media.');
+
+  const queue = await mediaItemStorage.getItem(userId);
+  if (queue && queue.mediaItems && queue.position >= 0) {
+    const next = queue.mediaItems[queue.position];
+    queue.position = (queue.position + 1) % queue.mediaItems.length;
+    await mediaItemStorage.setItem(userId, queue);
+    res.status(200).send({meta: next, filename: next.id + '.jpg'});
+  } else {
+    res.status(500).send({error: 'Cannot get queue data.'});
+  }
+});
+
+app.get('/getNextMedia/:media', async (req, res) => {
+  const userId = req.user.profile.id;
+  const media = req.params.media;
+  const p = path.resolve(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + media);
+  res.status(200).sendFile(p);
+});
+
+async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, userId, req, retries = config.maxRetries) {
+  let error = null;
+
+  try {
+    // Loop while the number of photos threshold has not been met yet
+    // and while there is a nextPageToken to load more items.
+    logger.info(
+      `Getting Media: ${JSON.stringify(baseUrl)}`);
+
+    const options = {
+      url: baseUrl + '=w2000-d',
+      encoding: null
+    };
+
+    await request.get(options)
+      .then(function (res) {
+        const buffer = Buffer.from(res, 'utf8');
+        fs.writeFileSync(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + itemId + '.jpg', buffer);
+      });
+
+  } catch (err) {
+    if (err.statusCode === 401 && retries > 0) {
+      let result = {};
+      let promiseRequestNew = new Promise(function (resolve, reject) {
+        refresh.requestNewAccessToken('google', refreshToken, async function(err, accessToken, refreshToken) {
+          logger.info('Got new Access Token.');
+          req.user.accessToken = accessToken;
+          const result = await libraryApiGetMedia(accessToken, refreshToken, baseUrl, itemId, userId, req, --retries);
+          resolve(result);
+        });
+      });
+      await promiseRequestNew.then(function (res) {
+        result = res;
+      });
+      return result;
+    }
+    // If the error is a StatusCodeError, it contains an error.error object that
+    // should be returned. It has a name, statuscode and message in the correct
+    // format. Otherwise extract the properties.
+    error = err.error.error ||
+      {name: err.name, code: err.statusCode, message: err.message};
+    logger.error(error);
+  }
+
+  logger.info('Get complete.');
+  return {baseUrl, error};
 }
 
 // Submits a search request to the Google Photos Library API for the given
