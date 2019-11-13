@@ -3,7 +3,7 @@
 	<div>
 		<h2>Slideshow Configuration</h2>
 	</div>
-	<form>
+	<form id="config-form">
 		<!-- Numeric Textfield with Floating Label -->
 		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
 			<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" required id="input-interval">
@@ -14,6 +14,12 @@
 		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
 			<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" required id="input-duration">
 			<label class="mdl-textfield__label" for="sample4">Transition Duration [ms]</label>
+			<span class="mdl-textfield__error">Input is not a number!</span>
+		</div>
+		<!-- Numeric Textfield with Floating Label -->
+		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+			<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" required id="input-update">
+			<label class="mdl-textfield__label" for="sample4">Minimum time to refresh album or search [m]</label>
 			<span class="mdl-textfield__error">Input is not a number!</span>
 		</div>
 

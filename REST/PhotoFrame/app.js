@@ -426,7 +426,7 @@ app.get('/getConfig', async (req, res) => {
     // No data is stored yet for the user. Return an empty response.
     // The user is likely new.
     logger.verbose('No config data.');
-    res.status(200).send({config: {duration: 366, interval: 30}});
+    res.status(200).send({config: {duration: 366, interval: 30, update: 120}});
   }
 });
 
@@ -505,6 +505,43 @@ function constructDate(year, month, day) {
   return date;
 }
 
+function refreshPreloadedMediaAsync(request) {
+  refreshPreloadedMedia(request);
+}
+
+async function refreshPreloadedMedia(req) {
+  const userId = req.user.profile.id;
+  const authToken = req.user.accessToken;
+  const refreshToken = req.user.refreshToken;
+
+  const lastChecked = await mediaItemStorage.getItem(userId + '.lastChecked');
+  const cfg = await storage.getItem(userId + '.config');
+  let interval = cfg.config.update || 120;
+  let now = Math.floor(Date.now() / 1000);
+
+  if (!lastChecked || !lastChecked.timestamp || (lastChecked.timestamp + interval*60) < now) {
+    logger.info('Check album/search for updates...');
+    const stored = await storage.getItem(userId);
+    if (stored && stored.parameters) {
+      // Items are no longer cached. Resubmit the stored search query and return
+      // the result.
+      logger.verbose(
+        `Resubmitting filter search ${JSON.stringify(stored.parameters)}`);
+      const data = await libraryApiSearch(authToken, refreshToken, stored.parameters, req);
+
+      await preloadPhotos(authToken, refreshToken, userId, data.photos, req);
+
+      now = Math.floor(Date.now() / 1000);
+      await mediaItemStorage.setItem(userId + '.lastChecked', {timestamp: now});
+      logger.info('Check album/search for updates done.');
+    } else {
+      logger.error('Couldn\'t update, no parameters found.');
+    }
+  } else {
+    logger.verbose('Refresh of preloaded media not necessary')
+  }
+}
+
 // Download new photos in album or search and delete removed media
 async function preloadPhotos(authToken, refreshToken, userId, mediaItems, request) {
   const storageDir = config.dataPath+'/persist-mediaitemstorage/';
@@ -550,6 +587,9 @@ async function createQueueCached(mediaItems, userId) {
 app.get('/getNextMedia', async (req, res) => {
   const userId = req.user.profile.id;
   logger.info('Loading next Media.');
+
+  // trigger check for refresh
+  refreshPreloadedMediaAsync(req);
 
   const queue = await mediaItemStorage.getItem(userId);
   if (queue && queue.mediaItems && queue.position >= 0) {

@@ -6,6 +6,7 @@ function loadConfig() {
     success: (data) => {
       $('#input-duration').val(data.config.duration);
       $('#input-interval').val(data.config.interval);
+      $('#input-update').val(data.config.update);
       console.log('Loaded config.');
     },
     error: (data) => {
@@ -24,7 +25,8 @@ function saveConfig() {
     data: {
       config: {
         duration: $('#input-duration').val(),
-        interval: $('#input-interval').val()
+        interval: $('#input-interval').val(),
+        update: $('#input-update').val()
       }
     },
     success: (data) => {
@@ -41,6 +43,7 @@ function saveConfig() {
 $(document).ready(() => {
   // Load the queue of photos selected by the user for the photo
   loadConfig();
+
 
   $('#button-save').on('click', (e) => {
     e.preventDefault();
