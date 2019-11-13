@@ -6,6 +6,22 @@ This sample shows how to connect an app with Google Photos through OAuth 2.0 and
 
 This app is built using [Express.js](https://expressjs.com/) and [Material Design Lite](https://getmdl.io/).
 
+## Docker Compose
+
+Create an environtment file `photo-frame.env` with the following options:
+
+```
+CLIENT_ID=xxxxxxx.apps.googleusercontent.com
+CLIENT_SECRET=xxxxxxx
+```
+
+Then run an update with:
+
+```
+docker-compose pull
+docker-compose up -d
+```
+
 ## App Overview
 This web app is an online photo frame that allows users to load photos from a search, an album or the library and then show these images in a full screen slideshow.
 
