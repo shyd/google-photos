@@ -28,6 +28,10 @@ const session = require('express-session');
 const sessionFileStore = require('session-file-store');
 const uuid = require('uuid');
 const winston = require('winston');
+const refresh = require('passport-oauth2-refresh');
+const Buffer = require('buffer').Buffer;
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const fileStore = sessionFileStore(session);
@@ -75,13 +79,17 @@ albumCache.init();
 // but resubmitting the search query ensures that the photo frame displays
 // any new images that match the search criteria (or that have been added
 // to an album).
-const storage = persist.create({dir: 'persist-storage/'});
+const storage = persist.create({dir: config.dataPath+'/persist-storage/'});
 storage.init();
+
+// persistant storage to store search data for slideshow and allow offline display
+const mediaItemStorage = persist.create({dir: config.dataPath+'/persist-mediaitemstorage/'});
+mediaItemStorage.init();
 
 // Set up OAuth 2.0 authentication through the passport.js library.
 const passport = require('passport');
 const auth = require('./auth');
-auth(passport);
+auth(passport, refresh);
 
 // Set up a session middleware to handle user sessions.
 // NOTE: A secret is used to sign the cookie. This is just used for this sample
@@ -89,8 +97,12 @@ auth(passport);
 const sessionMiddleware = session({
   resave: true,
   saveUninitialized: true,
-  store: new fileStore({}),
+  store: new fileStore({
+    ttl: 60*60*24*365*30, // 30 years
+    path: config.dataPath+'/sessions'
+  }),
   secret: 'photo frame sample',
+  cookie: { maxAge: 60000*60*24*365*30 }, // 30 years
 });
 
 // Console transport for winton.
@@ -193,6 +205,7 @@ app.get('/auth/google', passport.authenticate('google', {
   scope: config.scopes,
   failureFlash: true,  // Display errors to the user.
   session: true,
+  accessType: 'offline',
 }));
 
 // Callback receiver for the OAuth process after log in.
@@ -218,6 +231,16 @@ app.get('/album', (req, res) => {
   renderIfAuthenticated(req, res, 'pages/album');
 });
 
+app.get('/config', (req, res) => {
+  renderIfAuthenticated(req, res, 'pages/config');
+});
+
+// Loads the slideshow page if the user is authenticated.
+// This page displays a slideshow of the selected images.
+app.get('/slideshow', (req, res) => {
+  renderIfAuthenticated(req, res, 'pages/slideshow');
+});
+
 
 // Handles form submissions from the search page.
 // The user has made a selection and wants to load photos into the photo frame
@@ -227,7 +250,8 @@ app.get('/album', (req, res) => {
 // Returns a list of media items if the search was successful, or an error
 // otherwise.
 app.post('/loadFromSearch', async (req, res) => {
-  const authToken = req.user.token;
+  const authToken = req.user.accessToken;
+  const refreshToken = req.user.refreshToken;
 
   logger.info('Loading images from search.');
   logger.silly('Received form data: ', req.body);
@@ -269,7 +293,7 @@ app.post('/loadFromSearch', async (req, res) => {
   const parameters = {filters};
 
   // Submit the search request to the API and wait for the result.
-  const data = await libraryApiSearch(authToken, parameters);
+  const data = await libraryApiSearch(authToken, refreshToken, parameters, req);
 
   // Return and cache the result and parameters.
   const userId = req.user.profile.id;
@@ -284,7 +308,8 @@ app.post('/loadFromSearch', async (req, res) => {
 app.post('/loadFromAlbum', async (req, res) => {
   const albumId = req.body.albumId;
   const userId = req.user.profile.id;
-  const authToken = req.user.token;
+  const authToken = req.user.accessToken;
+  const refreshToken = req.user.refreshToken;
 
   logger.info(`Importing album: ${albumId}`);
 
@@ -295,7 +320,10 @@ app.post('/loadFromAlbum', async (req, res) => {
   const parameters = {albumId};
 
   // Submit the search request to the API and wait for the result.
-  const data = await libraryApiSearch(authToken, parameters);
+  const data = await libraryApiSearch(authToken, refreshToken, parameters, req);
+
+  // trigger preload
+  preloadPhotos(authToken, refreshToken, userId, data.photos, req);
 
   returnPhotos(res, userId, data, parameters)
 });
@@ -315,7 +343,7 @@ app.get('/getAlbums', async (req, res) => {
     logger.verbose('Loading albums from API.');
     // Albums not in cache, retrieve the albums from the Library API
     // and return them
-    const data = await libraryApiGetAlbums(req.user.token);
+    const data = await libraryApiGetAlbums(req.user.accessToken, req.user.refreshToken, req);
     if (data.error) {
       // Error occured during the request. Albums could not be loaded.
       returnError(res, data);
@@ -340,7 +368,8 @@ app.get('/getAlbums', async (req, res) => {
 // are resubmitted to the API and the result returned.
 app.get('/getQueue', async (req, res) => {
   const userId = req.user.profile.id;
-  const authToken = req.user.token;
+  const authToken = req.user.accessToken;
+  const refreshToken = req.user.refreshToken;
 
   logger.info('Loading queue.');
 
@@ -354,15 +383,25 @@ app.get('/getQueue', async (req, res) => {
   const stored = await storage.getItem(userId);
 
   if (cachedPhotos) {
+    const storedConfig = await storage.getItem(userId+'.config');
+    if (storedConfig && storedConfig.config) {
+      stored.config = storedConfig.config;
+    } else {
+      stored.config = {duration: 366, interval: 30};
+    }
     // Items are still cached. Return them.
     logger.verbose('Returning cached photos.');
-    res.status(200).send({photos: cachedPhotos, parameters: stored.parameters});
+    res.status(200).send({photos: cachedPhotos, parameters: stored.parameters, config: stored.config});
   } else if (stored && stored.parameters) {
     // Items are no longer cached. Resubmit the stored search query and return
     // the result.
     logger.verbose(
         `Resubmitting filter search ${JSON.stringify(stored.parameters)}`);
-    const data = await libraryApiSearch(authToken, stored.parameters);
+    const data = await libraryApiSearch(authToken, refreshToken, stored.parameters, req);
+
+    // trigger preload
+    preloadPhotos(authToken, refreshToken, userId, data.photos, req);
+
     returnPhotos(res, userId, data, stored.parameters);
   } else {
     // No data is stored yet for the user. Return an empty response.
@@ -372,7 +411,35 @@ app.get('/getQueue', async (req, res) => {
   }
 });
 
+app.get('/getConfig', async (req, res) => {
+  const userId = req.user.profile.id;
 
+  logger.info('Loading Config.');
+
+  const stored = await storage.getItem(userId+'.config');
+
+  if (stored && stored.config) {
+    // Items are still cached. Return them.
+    logger.verbose(`Returning Config. ${JSON.stringify(stored.config)}`);
+    res.status(200).send({config: stored.config});
+  } else {
+    // No data is stored yet for the user. Return an empty response.
+    // The user is likely new.
+    logger.verbose('No config data.');
+    res.status(200).send({config: {duration: 366, interval: 30, update: 120}});
+  }
+});
+
+app.post('/saveConfig', async (req, res) => {
+  const userId = req.user.profile.id;
+  const config = req.body.config;
+
+  logger.info(`Saving config: ${config}`);
+
+  storage.setItemSync(userId+'.config', {config: config});
+
+  res.status(200).send({});
+});
 
 // Start the server
 server.listen(config.port, () => {
@@ -438,13 +505,165 @@ function constructDate(year, month, day) {
   return date;
 }
 
+function refreshPreloadedMediaAsync(request) {
+  refreshPreloadedMedia(request);
+}
+
+async function refreshPreloadedMedia(req) {
+  const userId = req.user.profile.id;
+  const authToken = req.user.accessToken;
+  const refreshToken = req.user.refreshToken;
+
+  const lastChecked = await mediaItemStorage.getItem(userId + '.lastChecked');
+  const cfg = await storage.getItem(userId + '.config');
+  let interval = cfg.config.update || 120;
+  let now = Math.floor(Date.now() / 1000);
+
+  if (!lastChecked || !lastChecked.timestamp || (lastChecked.timestamp + interval*60) < now) {
+    logger.info('Check album/search for updates...');
+    const stored = await storage.getItem(userId);
+    if (stored && stored.parameters) {
+      // Items are no longer cached. Resubmit the stored search query and return
+      // the result.
+      logger.verbose(
+        `Resubmitting filter search ${JSON.stringify(stored.parameters)}`);
+      const data = await libraryApiSearch(authToken, refreshToken, stored.parameters, req);
+
+      await preloadPhotos(authToken, refreshToken, userId, data.photos, req);
+
+      now = Math.floor(Date.now() / 1000);
+      await mediaItemStorage.setItem(userId + '.lastChecked', {timestamp: now});
+      logger.info('Check album/search for updates done.');
+    } else {
+      logger.error('Couldn\'t update, no parameters found.');
+    }
+  } else {
+    logger.verbose('Refresh of preloaded media not necessary')
+  }
+}
+
+// Download new photos in album or search and delete removed media
+async function preloadPhotos(authToken, refreshToken, userId, mediaItems, request) {
+  const storageDir = config.dataPath+'/persist-mediaitemstorage/';
+  let somethingChanged = false;
+  await fs.mkdir(storageDir + userId, () => {});
+  for (let i = 0; i < mediaItems.length; i++) {
+    const item = mediaItems[i];
+    if (!fs.existsSync(storageDir + userId + '/' + item.id + '.jpg')) {
+      await libraryApiGetMedia(authToken, refreshToken, item.baseUrl, item.id, userId, request);
+      somethingChanged = true;
+    }
+  }
+  const ls = fs.readdirSync(storageDir + userId);
+  for (let i = 0; i < ls.length; i++) {
+    let exists = false;
+    for (let j = 0; j < mediaItems.length; j++) {
+      if (ls[i].startsWith(mediaItems[j].id)) {
+        exists = true;
+      }
+    }
+    if (!exists) {
+      fs.unlinkSync(storageDir + userId + '/' + ls[i]);
+      logger.info('Cleanup file: ' + ls[i]);
+      somethingChanged = true;
+    }
+  }
+  if (somethingChanged) {
+    createQueueCached(mediaItems, userId);
+  }
+}
+
+async function createQueueCached(mediaItems, userId) {
+  // shuffle array
+  for (let i = mediaItems.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * i);
+    const temp = mediaItems[i];
+    mediaItems[i] = mediaItems[j];
+    mediaItems[j] = temp;
+  }
+  await mediaItemStorage.setItem(userId, {mediaItems: mediaItems, position: 0});
+}
+
+app.get('/getNextMedia', async (req, res) => {
+  const userId = req.user.profile.id;
+  logger.info('Loading next Media.');
+
+  // trigger check for refresh
+  refreshPreloadedMediaAsync(req);
+
+  const queue = await mediaItemStorage.getItem(userId);
+  if (queue && queue.mediaItems && queue.position >= 0) {
+    const next = queue.mediaItems[queue.position];
+    queue.position = (queue.position + 1) % queue.mediaItems.length;
+    await mediaItemStorage.setItem(userId, queue);
+    res.status(200).send({meta: next, filename: next.id + '.jpg'});
+  } else {
+    res.status(500).send({error: 'Cannot get queue data.'});
+  }
+});
+
+app.get('/getNextMedia/:media', async (req, res) => {
+  const userId = req.user.profile.id;
+  const media = req.params.media;
+  const p = path.resolve(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + media);
+  res.status(200).sendFile(p);
+});
+
+async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, userId, req, retries = config.maxRetries) {
+  let error = null;
+
+  try {
+    // Loop while the number of photos threshold has not been met yet
+    // and while there is a nextPageToken to load more items.
+    logger.info(
+      `Getting Media: ${JSON.stringify(baseUrl)}`);
+
+    const options = {
+      url: baseUrl + '=w2000-d',
+      encoding: null
+    };
+
+    await request.get(options)
+      .then(function (res) {
+        const buffer = Buffer.from(res, 'utf8');
+        fs.writeFileSync(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + itemId + '.jpg', buffer);
+      });
+
+  } catch (err) {
+    if (err.statusCode === 401 && retries > 0) {
+      let result = {};
+      let promiseRequestNew = new Promise(function (resolve, reject) {
+        refresh.requestNewAccessToken('google', refreshToken, async function(err, accessToken, refreshToken) {
+          logger.info('Got new Access Token.');
+          req.user.accessToken = accessToken;
+          const result = await libraryApiGetMedia(accessToken, refreshToken, baseUrl, itemId, userId, req, --retries);
+          resolve(result);
+        });
+      });
+      await promiseRequestNew.then(function (res) {
+        result = res;
+      });
+      return result;
+    }
+    // If the error is a StatusCodeError, it contains an error.error object that
+    // should be returned. It has a name, statuscode and message in the correct
+    // format. Otherwise extract the properties.
+    error = err.error.error ||
+      {name: err.name, code: err.statusCode, message: err.message};
+    logger.error(error);
+  }
+
+  logger.info('Get complete.');
+  return {baseUrl, error};
+}
+
 // Submits a search request to the Google Photos Library API for the given
 // parameters. The authToken is used to authenticate requests for the API.
 // The minimum number of expected results is configured in config.photosToLoad.
 // This function makes multiple calls to the API to load at least as many photos
 // as requested. This may result in more items being listed in the response than
 // originally requested.
-async function libraryApiSearch(authToken, parameters) {
+async function libraryApiSearch(authToken, refreshToken, parameters, req, retries = config.maxRetries) {
   let photos = [];
   let nextPageToken = null;
   let error = null;
@@ -495,6 +714,21 @@ async function libraryApiSearch(authToken, parameters) {
              parameters.pageToken != null);
 
   } catch (err) {
+    if (err.statusCode === 401 && retries > 0) {
+      let result = {};
+      let promiseRequestNew = new Promise(function (resolve, reject) {
+        refresh.requestNewAccessToken('google', refreshToken, async function(err, accessToken, refreshToken) {
+          logger.info('Got new Access Token.');
+          req.user.accessToken = accessToken;
+          const result = await libraryApiSearch(accessToken, refreshToken, parameters, req, --retries);
+          resolve(result);
+        });
+      });
+      await promiseRequestNew.then(function (res) {
+        result = res;
+      });
+      return result;
+    }
     // If the error is a StatusCodeError, it contains an error.error object that
     // should be returned. It has a name, statuscode and message in the correct
     // format. Otherwise extract the properties.
@@ -509,7 +743,7 @@ async function libraryApiSearch(authToken, parameters) {
 
 // Returns a list of all albums owner by the logged in user from the Library
 // API.
-async function libraryApiGetAlbums(authToken) {
+async function libraryApiGetAlbums(authToken, refreshToken, req, retries = config.maxRetries) {
   let albums = [];
   let nextPageToken = null;
   let error = null;
@@ -544,6 +778,22 @@ async function libraryApiGetAlbums(authToken) {
     } while (parameters.pageToken != null);
 
   } catch (err) {
+    if (err.statusCode === 401 && retries > 0) {
+      let result = {};
+      let promiseRequestNew = new Promise(function (resolve, reject) {
+        refresh.requestNewAccessToken('google', refreshToken, {}, async function(err, accessToken, refreshToken) {
+          req.user.accessToken = accessToken;
+          logger.info('Got new Access Token.');
+          const result = await libraryApiGetAlbums(accessToken, refreshToken, req, --retries);
+          resolve(result);
+        })
+      });
+      console.log("before promise");
+      await promiseRequestNew.then(function (res) {
+        result = res;
+      });
+      return result;
+    }
     // If the error is a StatusCodeError, it contains an error.error object that
     // should be returned. It has a name, statuscode and message in the correct
     // format. Otherwise extract the properties.

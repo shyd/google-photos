@@ -1,0 +1,32 @@
+<% include ../partials/head %>
+<section class="sample-content">
+	<div>
+		<h2>Photo frame slideshow</h2>
+	</div>
+	<div>
+   	 	<p id="preview-description" style="display: none;">
+        	<div class="snippet">
+				Click 'View in Frame' to run Slideshow.
+			</div>
+    	</p>
+	</div>
+	<div id="slideshow-container" class="fullscreen"></div>
+	<div id="images_empty" style="display:none">
+	 		<img src="/imgs/null-results.png">
+	 		<p>No results, try searching again</p>
+	</div>
+</section>
+
+<div class="floating-button">
+	<button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent" id="startSlideshow">
+		<i class="material-icons">fullscreen</i>
+		<span class="float-btn-label">View in frame</span>
+	</button>
+</div>
+
+<% include ../partials/dialogs %>
+
+<% include ../partials/js %>
+<script src="/js/slideshow.js"></script>
+
+<% include ../partials/footer %>

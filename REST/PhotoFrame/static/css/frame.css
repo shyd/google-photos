@@ -231,3 +231,23 @@ p .gp-button {
 .filter-group:last-child {
   padding-bottom: 2vh;
 }
+
+/* Slideshow */
+#slideshow-container {
+  z-index: 999;
+  background-size: cover;
+  background-position: center;
+}
+
+.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  overflow: auto;
+}
+
+.d-none {
+  display: none;
+}

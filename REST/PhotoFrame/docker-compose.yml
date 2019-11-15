@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  photo-frame:
+    image: shyd/google-photos
+    ports:
+      - "8080:8080"
+    env_file:
+      - photo-frame.env
+    restart: unless-stopped
+    volumes:
+      - photo-frame-data:/data
+
+volumes:
+  photo-frame-data:

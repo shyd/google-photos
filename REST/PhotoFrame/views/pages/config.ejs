@@ -1,0 +1,40 @@
+<% include ../partials/head %>
+<section class="sample-content">
+	<div>
+		<h2>Slideshow Configuration</h2>
+	</div>
+	<form id="config-form">
+		<!-- Numeric Textfield with Floating Label -->
+		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+			<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" required id="input-interval">
+			<label class="mdl-textfield__label" for="sample4">Slideshow Interval [s]</label>
+			<span class="mdl-textfield__error">Input is not a number!</span>
+		</div>
+		<!-- Numeric Textfield with Floating Label -->
+		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+			<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" required id="input-duration">
+			<label class="mdl-textfield__label" for="sample4">Transition Duration [ms]</label>
+			<span class="mdl-textfield__error">Input is not a number!</span>
+		</div>
+		<!-- Numeric Textfield with Floating Label -->
+		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+			<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" required id="input-update">
+			<label class="mdl-textfield__label" for="sample4">Minimum time to refresh album or search [m]</label>
+			<span class="mdl-textfield__error">Input is not a number!</span>
+		</div>
+
+		<div class="floating-button">
+			<button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent" type="submit" id="button-save">
+				<i class="material-icons">save</i>
+				<span class="float-btn-label">Save</span>
+			</button>
+		</div>
+	</form>
+</section>
+
+<% include ../partials/dialogs %>
+
+<% include ../partials/js %>
+<script src="/js/config.js"></script>
+
+<% include ../partials/footer %>
