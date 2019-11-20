@@ -237,6 +237,19 @@ p .gp-button {
   z-index: 999;
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
+}
+
+#slideshow-backdrop {
+  z-index: 998;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  /* Add the blur effect */
+  filter: blur(8px);
+  -webkit-filter: blur(8px);
+  transform: scale(1.1);
 }
 
 .fullscreen {
