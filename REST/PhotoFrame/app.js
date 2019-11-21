@@ -570,6 +570,8 @@ async function preloadPhotos(authToken, refreshToken, userId, mediaItems, reques
   }
   if (somethingChanged) {
     createQueueCached(mediaItems, userId);
+  } else {
+    updateMediaMetaData(mediaItems, userId);
   }
 }
 
@@ -582,6 +584,26 @@ async function createQueueCached(mediaItems, userId) {
     mediaItems[j] = temp;
   }
   await mediaItemStorage.setItem(userId, {mediaItems: mediaItems, position: 0});
+}
+
+async function updateMediaMetaData(mediaItems, userId) {
+  const queue = await mediaItemStorage.getItem(userId);
+  let somethingChanged = false;
+  for (let i = 0; i < mediaItems.length; i++) {
+    for (let j = 0; j < queue.mediaItems.length; j++) {
+      if (queue.mediaItems[j].id === mediaItems[i].id) {
+        if (queue.mediaItems[j].description !== mediaItems[i].description) {
+          queue.mediaItems[j].description = mediaItems[i].description;
+          somethingChanged = true;
+          logger.info('Metadata changed for: ' + mediaItems[i].id);
+        }
+      }
+    }
+  }
+  if (somethingChanged) {
+    await mediaItemStorage.setItem(userId, queue);
+    logger.info('Updated metadata.');
+  }
 }
 
 app.get('/getNextMedia', async (req, res) => {

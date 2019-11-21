@@ -5,8 +5,6 @@ function instantInterval(handler, timeout) {
 }
 
 function loadSlideshow(interval) {
-  $('#slideshow-container').empty();
-
   let pos = 0;
   instantInterval(function () {
     $.ajax({
@@ -19,7 +17,21 @@ function loadSlideshow(interval) {
         const url = '/getNextMedia/' + data.filename;
         img.src = url;
         img.onload = function () {
-          $('#slideshow-container').css('backgroundImage', 'url('+url+')');
+          let desc = {};
+          if (data.meta.description) {
+            // get json from description
+            try {
+              desc = $.parseJSON(data.meta.description.substr(0, data.meta.description.lastIndexOf("}") + 1));
+            }
+            catch (e) { }
+          }
+          desc.photoFrame = desc.photoFrame || {};
+          const alignVert = desc.photoFrame.vertical || "center";
+          const alignHor = desc.photoFrame.horizontal || "center";
+          const size = desc.photoFrame.size || "cover";
+          console.log('Image alignment x, y:', alignHor, alignVert);
+          $('#slideshow-image').css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert).css('background-size', size);
+          $('#slideshow-backdrop').css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert);
           console.log('Set current image');
         };
       },
@@ -42,8 +54,10 @@ function initSlideshow() {
     success: (data) => {
       // Queue has been loaded. Display the media items as a grid on screen.
       hideLoadingDialog();
-      $('#slideshow-container').css('-webkit-transition', 'background-image '+data.config.duration+'ms ease-in-out');
-      $('#slideshow-container').css('transition', 'background-image '+data.config.duration+'ms ease-in-out');
+      $('#slideshow-image').css('-webkit-transition', 'background-image '+data.config.duration+'ms ease-in-out');
+      $('#slideshow-image').css('transition', 'background-image '+data.config.duration+'ms ease-in-out');
+      $('#slideshow-backdrop').css('-webkit-transition', 'background-image '+data.config.duration+'ms ease-in-out');
+      $('#slideshow-backdrop').css('transition', 'background-image '+data.config.duration+'ms ease-in-out');
       loadSlideshow(data.config.interval);
       hideLoadingDialog();
       console.log('Loaded queue.');
