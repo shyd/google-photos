@@ -5,8 +5,6 @@ function instantInterval(handler, timeout) {
 }
 
 function loadSlideshow(interval) {
-  $('#slideshow-container').empty();
-
   let pos = 0;
   instantInterval(function () {
     $.ajax({
@@ -32,7 +30,7 @@ function loadSlideshow(interval) {
           const alignHor = desc.photoFrame.horizontal || "center";
           const size = desc.photoFrame.size || "cover";
           console.log('Image alignment x, y:', alignHor, alignVert);
-          $('#slideshow-container').css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert).css('background-size', size);
+          $('#slideshow-image').css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert).css('background-size', size);
           $('#slideshow-backdrop').css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert);
           console.log('Set current image');
         };
@@ -56,8 +54,8 @@ function initSlideshow() {
     success: (data) => {
       // Queue has been loaded. Display the media items as a grid on screen.
       hideLoadingDialog();
-      $('#slideshow-container').css('-webkit-transition', 'background-image '+data.config.duration+'ms ease-in-out');
-      $('#slideshow-container').css('transition', 'background-image '+data.config.duration+'ms ease-in-out');
+      $('#slideshow-image').css('-webkit-transition', 'background-image '+data.config.duration+'ms ease-in-out');
+      $('#slideshow-image').css('transition', 'background-image '+data.config.duration+'ms ease-in-out');
       $('#slideshow-backdrop').css('-webkit-transition', 'background-image '+data.config.duration+'ms ease-in-out');
       $('#slideshow-backdrop').css('transition', 'background-image '+data.config.duration+'ms ease-in-out');
       loadSlideshow(data.config.interval);
@@ -79,8 +77,6 @@ $(document).ready(() => {
   // image.
   $('#startSlideshow').on('click', (e) => $('#slideshow-container').removeClass('d-none'));
   $('#slideshow-container').on('click', (e) => $('#slideshow-container').addClass('d-none'));
-  $('#startSlideshow').on('click', (e) => $('#slideshow-backdrop').removeClass('d-none'));
-  $('#slideshow-container').on('click', (e) => $('#slideshow-backdrop').addClass('d-none'));
 
   // Clicking log out opens the log out screen.
   $('#logout').on('click', (e) => {

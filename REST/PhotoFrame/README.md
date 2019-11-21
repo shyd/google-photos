@@ -22,6 +22,20 @@ docker-compose pull
 docker-compose up -d
 ```
 
+## Frame Alignment Settings
+To change image alignment of a specific photo, put in into the Google Photos description as json with CSS settings like `{"photoFrame":{"vertical":"bottom"}}`,  `{"photoFrame":{"horizontal":"left"}}` or activate blurred backdrop for portrait or panorama photos with `{"photoFrame":{"size":"contain"}}`.
+Possible fields are:
+
+```
+{
+    "photoFrame": {
+        "vertical": "bottom",
+        "horizontal": "left",
+        "size": "contain"
+    }
+}
+```
+
 ## App Overview
 This web app is an online photo frame that allows users to load photos from a search, an album or the library and then show these images in a full screen slideshow.
 
