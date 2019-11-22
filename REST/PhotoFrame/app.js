@@ -426,7 +426,7 @@ app.get('/getConfig', async (req, res) => {
     // No data is stored yet for the user. Return an empty response.
     // The user is likely new.
     logger.verbose('No config data.');
-    res.status(200).send({config: {duration: 366, interval: 30, update: 120}});
+    res.status(200).send({config: {duration: 366, interval: 30, update: 120, cycles: 1}});
   }
 });
 
@@ -514,12 +514,12 @@ async function refreshPreloadedMedia(req) {
   const authToken = req.user.accessToken;
   const refreshToken = req.user.refreshToken;
 
-  const lastChecked = await mediaItemStorage.getItem(userId + '.lastChecked');
+  const storedStatus = await mediaItemStorage.getItem(userId + '.storedStatus');
   const cfg = await storage.getItem(userId + '.config');
   let interval = cfg.config.update || 120;
   let now = Math.floor(Date.now() / 1000);
 
-  if (!lastChecked || !lastChecked.timestamp || (lastChecked.timestamp + interval*60) < now) {
+  if (!storedStatus || !storedStatus.lastChecked || (storedStatus.lastChecked + interval*60) < now) {
     logger.info('Check album/search for updates...');
     const stored = await storage.getItem(userId);
     if (stored && stored.parameters) {
@@ -532,7 +532,7 @@ async function refreshPreloadedMedia(req) {
       await preloadPhotos(authToken, refreshToken, userId, data.photos, req);
 
       now = Math.floor(Date.now() / 1000);
-      await mediaItemStorage.setItem(userId + '.lastChecked', {timestamp: now});
+      await mediaItemStorage.setItem(userId + '.storedStatus', {lastChecked: now});
       logger.info('Check album/search for updates done.');
     } else {
       logger.error('Couldn\'t update, no parameters found.');
@@ -583,7 +583,7 @@ async function createQueueCached(mediaItems, userId) {
     mediaItems[i] = mediaItems[j];
     mediaItems[j] = temp;
   }
-  await mediaItemStorage.setItem(userId, {mediaItems: mediaItems, position: 0});
+  await mediaItemStorage.setItem(userId, {mediaItems: mediaItems, position: 0, cycle: 0});
 }
 
 async function updateMediaMetaData(mediaItems, userId) {
@@ -613,11 +613,25 @@ app.get('/getNextMedia', async (req, res) => {
   // trigger check for refresh
   refreshPreloadedMediaAsync(req);
 
+  const cfg = await storage.getItem(userId + '.config');
+  const cyclesBeforeShuffle = cfg.config.cycles || 1;
+
   const queue = await mediaItemStorage.getItem(userId);
   if (queue && queue.mediaItems && queue.position >= 0) {
     const next = queue.mediaItems[queue.position];
     queue.position = (queue.position + 1) % queue.mediaItems.length;
     await mediaItemStorage.setItem(userId, queue);
+
+    if (queue.position === 0) {
+      queue.cycle = (queue.cycle || 0) + 1;
+      logger.verbose('Current queue cycles: ' + queue.cycle);
+      if (queue.cycle >= cyclesBeforeShuffle) {
+        await createQueueCached(queue.mediaItems, userId);
+        logger.info('Queue shuffled, position and cycles set to 0.');
+      } else {
+        await mediaItemStorage.setItem(userId, queue);
+      }
+    }
     res.status(200).send({meta: next, filename: next.id + '.jpg'});
   } else {
     res.status(500).send({error: 'Cannot get queue data.'});

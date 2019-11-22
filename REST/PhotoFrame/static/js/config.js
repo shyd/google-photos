@@ -7,6 +7,7 @@ function loadConfig() {
       $('#input-duration').val(data.config.duration);
       $('#input-interval').val(data.config.interval);
       $('#input-update').val(data.config.update);
+      $('#input-cycles').val(data.config.cycles);
       console.log('Loaded config.');
     },
     error: (data) => {
@@ -26,7 +27,8 @@ function saveConfig() {
       config: {
         duration: $('#input-duration').val(),
         interval: $('#input-interval').val(),
-        update: $('#input-update').val()
+        update: $('#input-update').val(),
+        cycles: $('#input-cycles').val()
       }
     },
     success: (data) => {
@@ -47,7 +49,7 @@ $(document).ready(() => {
 
   $('#button-save').on('click', (e) => {
     e.preventDefault();
-    console.log('clicked')
+    console.log('clicked');
     saveConfig();
   });
 
