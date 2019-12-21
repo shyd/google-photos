@@ -14,26 +14,31 @@ function loadSlideshow(interval) {
       success: (data) => {
         console.log('trigger preload');
         const img = new Image();
+        const img_blurred = new Image();
         const url = '/getNextMedia/' + data.filename;
-        img.src = url;
-        img.onload = function () {
-          let desc = {};
-          if (data.meta.description) {
-            // get json from description
-            try {
-              desc = $.parseJSON(data.meta.description.substr(0, data.meta.description.lastIndexOf("}") + 1));
+        const url_blurred = '/getNextMedia/' + data.filenameBlurred;
+        img_blurred.onload = function () {
+          img.onload = function () {
+            let desc = {};
+            if (data.meta.description) {
+              // get json from description
+              try {
+                desc = $.parseJSON(data.meta.description.substr(0, data.meta.description.lastIndexOf("}") + 1));
+              } catch (e) {
+              }
             }
-            catch (e) { }
-          }
-          desc.photoFrame = desc.photoFrame || {};
-          const alignVert = desc.photoFrame.vertical || "center";
-          const alignHor = desc.photoFrame.horizontal || "center";
-          const size = desc.photoFrame.size || "cover";
-          console.log('Image alignment x, y:', alignHor, alignVert);
-          $('#slideshow-image').css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert).css('background-size', size);
-          $('#slideshow-backdrop').css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert);
-          console.log('Set current image');
+            desc.photoFrame = desc.photoFrame || {};
+            const alignVert = desc.photoFrame.vertical || "center";
+            const alignHor = desc.photoFrame.horizontal || "center";
+            const size = desc.photoFrame.size || "cover";
+            console.log('Image alignment x, y:', alignHor, alignVert);
+            $('#slideshow-image').css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert).css('background-size', size);
+            $('#slideshow-backdrop').css('backgroundImage', 'url(' + url_blurred + ')').css('background-position-x', alignHor).css('background-position-y', alignVert);
+            console.log('Set current image');
+          };
+          img.src = url;
         };
+        img_blurred.src = url_blurred;
       },
       error: (data) => {
         console.error('Could not load next media', data)

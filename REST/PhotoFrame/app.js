@@ -32,6 +32,7 @@ const refresh = require('passport-oauth2-refresh');
 const Buffer = require('buffer').Buffer;
 const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp');
 
 const app = express();
 const fileStore = sessionFileStore(session);
@@ -632,7 +633,7 @@ app.get('/getNextMedia', async (req, res) => {
         await mediaItemStorage.setItem(userId, queue);
       }
     }
-    res.status(200).send({meta: next, filename: next.id + '.jpg'});
+    res.status(200).send({meta: next, filename: next.id + '.jpg', filenameBlurred: next.id + '_blurred.jpg'});
   } else {
     res.status(500).send({error: 'Cannot get queue data.'});
   }
@@ -663,6 +664,15 @@ async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, user
       .then(function (res) {
         const buffer = Buffer.from(res, 'utf8');
         fs.writeFileSync(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + itemId + '.jpg', buffer);
+        sharp(buffer)
+          .blur(1+40/2)
+          .toBuffer()
+          .then(data => {
+            fs.writeFileSync(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + itemId + '_blurred.jpg', data);
+          })
+          .catch(err => {
+            logger.error('sharp: '+err);
+          });
       });
 
   } catch (err) {
