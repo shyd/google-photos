@@ -25,7 +25,6 @@ before_install:
 
 install:
   - cd REST/PhotoFrame
-  - npm install
   - docker login -u $DOCKER_USER -p $DOCKER_PASS
   - docker buildx create --name mybuild
   - docker buildx use mybuild
