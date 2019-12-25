@@ -4,7 +4,7 @@ WORKDIR /usr/src/app
 
 COPY . .
 
-RUN npm install
+RUN yarn install
 
 RUN mkdir -p /data/sessions
 RUN mkdir -p /data/persist-storage
