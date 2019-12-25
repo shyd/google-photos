@@ -6,6 +6,8 @@ function instantInterval(handler, timeout) {
 
 function loadSlideshow(interval) {
   let pos = 0;
+  const img = new Image();
+  const img_blurred = new Image();
   instantInterval(function () {
     $.ajax({
       type: 'GET',
@@ -13,8 +15,6 @@ function loadSlideshow(interval) {
       dataType: 'json',
       success: (data) => {
         console.log('trigger preload');
-        const img = new Image();
-        const img_blurred = new Image();
         const url = '/getNextMedia/' + data.filename;
         const url_blurred = '/getNextMedia/' + data.filenameBlurred;
         img_blurred.onload = function () {
