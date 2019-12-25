@@ -63,6 +63,9 @@ if (process.env.DATA_PATH !== undefined) {
     config.dataPath = process.env.DATA_PATH;
 }
 
+// Suffix of blurred image filenames
+config.blurredSuffix = '_blurred';
+
 // Number of maximum retries to refresh the access token
 config.maxRetries = 3;
 

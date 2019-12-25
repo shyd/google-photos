@@ -1,10 +1,10 @@
-FROM node:10
+FROM node:13-alpine
 
 WORKDIR /usr/src/app
 
 COPY . .
 
-RUN npm install
+RUN yarn install
 
 RUN mkdir -p /data/sessions
 RUN mkdir -p /data/persist-storage

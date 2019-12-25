@@ -550,7 +550,8 @@ async function preloadPhotos(authToken, refreshToken, userId, mediaItems, reques
   await fs.mkdir(storageDir + userId, () => {});
   for (let i = 0; i < mediaItems.length; i++) {
     const item = mediaItems[i];
-    if (!fs.existsSync(storageDir + userId + '/' + item.id + '.jpg')) {
+    if (!fs.existsSync(storageDir + userId + '/' + item.id + '.jpg') ||
+      !fs.existsSync(storageDir + userId + '/' + item.id + config.blurredSuffix + '.jpg')) {
       await libraryApiGetMedia(authToken, refreshToken, item.baseUrl, item.id, userId, request);
       somethingChanged = true;
     }
@@ -633,7 +634,7 @@ app.get('/getNextMedia', async (req, res) => {
         await mediaItemStorage.setItem(userId, queue);
       }
     }
-    res.status(200).send({meta: next, filename: next.id + '.jpg', filenameBlurred: next.id + '_blurred.jpg'});
+    res.status(200).send({meta: next, filename: next.id + '.jpg', filenameBlurred: next.id + config.blurredSuffix + '.jpg'});
   } else {
     res.status(500).send({error: 'Cannot get queue data.'});
   }
@@ -668,7 +669,7 @@ async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, user
           .blur(1+40/2)
           .toBuffer()
           .then(data => {
-            fs.writeFileSync(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + itemId + '_blurred.jpg', data);
+            fs.writeFileSync(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + itemId + config.blurredSuffix + '.jpg', data);
           })
           .catch(err => {
             logger.error('sharp: '+err);
