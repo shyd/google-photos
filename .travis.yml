@@ -24,7 +24,7 @@ install:
   - docker login -u $DOCKER_USER -p $DOCKER_PASS
   - docker buildx create --name mybuild
   - docker buildx use mybuild
-  - if [ "${TRAVIS_BRANCH}" == "master" ]; then
+  - if [ $TRAVIS_BRANCH == "master" ]; then
     docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --push -t shyd/google-photos .
     else
     docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --push -t shyd/google-photos:${TRAVIS_BRANCH} .
