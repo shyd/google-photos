@@ -1,7 +1,23 @@
+let slideshowImageA;
+let slideshowBackdropA;
+let slideshowImageB;
+let slideshowBackdropB;
+let slideshowCurrentImage;
 
 function instantInterval(handler, timeout) {
   handler();
   setInterval(handler, timeout);
+}
+
+function onLoadImage (url, callback) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      !!callback && callback(); //may not be async!
+      resolve();
+    };
+    img.src = url;
+  })
 }
 
 function loadSlideshow(interval) {
@@ -17,8 +33,9 @@ function loadSlideshow(interval) {
         console.log('trigger preload');
         const url = '/getNextMedia/' + data.filename;
         const url_blurred = '/getNextMedia/' + data.filenameBlurred;
-        img_blurred.onload = function () {
-          img.onload = function () {
+        const promises = [];
+        promises.push(onLoadImage(url_blurred));
+        promises.push(onLoadImage(url, () => {
             let desc = {};
             if (data.meta.description) {
               // get json from description
@@ -32,13 +49,30 @@ function loadSlideshow(interval) {
             const alignHor = desc.photoFrame.horizontal || "center";
             const size = desc.photoFrame.size || "cover";
             console.log('Image alignment x, y:', alignHor, alignVert);
-            $('#slideshow-image').css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert).css('background-size', size);
-            $('#slideshow-backdrop').css('backgroundImage', 'url(' + url_blurred + ')').css('background-position-x', alignHor).css('background-position-y', alignVert);
+            if (slideshowCurrentImage === 0) {
+              slideshowImageB.css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert).css('background-size', size);
+              slideshowBackdropB.css('backgroundImage', 'url(' + url_blurred + ')').css('background-position-x', alignHor).css('background-position-y', alignVert);
+            } else {
+              slideshowImageA.css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert).css('background-size', size);
+              slideshowBackdropA.css('backgroundImage', 'url(' + url_blurred + ')').css('background-position-x', alignHor).css('background-position-y', alignVert);
+            }
             console.log('Set current image');
-          };
-          img.src = url;
-        };
-        img_blurred.src = url_blurred;
+        }));
+        Promise.all(promises).then(() => {
+          //both images loaded...
+          if (slideshowCurrentImage === 0) {
+            slideshowImageB.css('zIndex', 999);
+            slideshowBackdropB.css('zIndex', 998);
+            slideshowImageA.css('zIndex', 991);
+            slideshowBackdropA.css('zIndex', 990);
+          } else {
+            slideshowImageA.css('zIndex', 999);
+            slideshowBackdropA.css('zIndex', 998);
+            slideshowImageB.css('zIndex', 991);
+            slideshowBackdropB.css('zIndex', 990);
+          }
+          slideshowCurrentImage = 1-slideshowCurrentImage;
+        });
       },
       error: (data) => {
         console.error('Could not load next media', data)
@@ -59,10 +93,10 @@ function initSlideshow() {
     success: (data) => {
       // Queue has been loaded. Display the media items as a grid on screen.
       hideLoadingDialog();
-      $('#slideshow-image').css('-webkit-transition', 'background-image '+data.config.duration+'ms ease-in-out');
+      /*$('#slideshow-image').css('-webkit-transition', 'background-image '+data.config.duration+'ms ease-in-out');
       $('#slideshow-image').css('transition', 'background-image '+data.config.duration+'ms ease-in-out');
       $('#slideshow-backdrop').css('-webkit-transition', 'background-image '+data.config.duration+'ms ease-in-out');
-      $('#slideshow-backdrop').css('transition', 'background-image '+data.config.duration+'ms ease-in-out');
+      $('#slideshow-backdrop').css('transition', 'background-image '+data.config.duration+'ms ease-in-out');*/
       loadSlideshow(data.config.interval);
       hideLoadingDialog();
       console.log('Loaded queue.');
@@ -77,6 +111,15 @@ function initSlideshow() {
 $(document).ready(() => {
   // Load the queue of photos selected by the user for the photo
   initSlideshow();
+
+  slideshowImageA = $('#slideshow-image-a');
+  slideshowBackdropA = $('#slideshow-backdrop-a');
+  slideshowImageB = $('#slideshow-image-b');
+  slideshowBackdropB = $('#slideshow-backdrop-b');
+
+  slideshowImageB.css('zIndex', 991);
+  slideshowBackdropB.css('zIndex', 990);
+  slideshowCurrentImage = 0;
 
   // Clicking the 'view fullscreen' button opens the gallery from the first
   // image.

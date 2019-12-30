@@ -237,14 +237,14 @@ p .gp-button {
   z-index: 1000;
 }
 
-#slideshow-image {
+#slideshow-image-a, #slideshow-image-b {
   z-index: 999;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 }
 
-#slideshow-backdrop {
+#slideshow-backdrop-a, #slideshow-backdrop-a {
   z-index: 998;
   background-size: cover;
   background-position: center;
