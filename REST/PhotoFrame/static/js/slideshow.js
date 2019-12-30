@@ -4,10 +4,19 @@ function instantInterval(handler, timeout) {
   setInterval(handler, timeout);
 }
 
+function onLoadImage = (url, callback) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      !!callback && callback(); //may not be async!
+      resolve();
+    };
+    img.src = url;
+  } 
+}
+
 function loadSlideshow(interval) {
   let pos = 0;
-  const img = new Image();
-  const img_blurred = new Image();
   instantInterval(function () {
     $.ajax({
       type: 'GET',
@@ -17,9 +26,10 @@ function loadSlideshow(interval) {
         console.log('trigger preload');
         const url = '/getNextMedia/' + data.filename;
         const url_blurred = '/getNextMedia/' + data.filenameBlurred;
-        img_blurred.onload = function () {
-          img.onload = function () {
-            let desc = {};
+        const promises = [];
+        promises.push(onLoadImage(url_blurred));
+        promises.push(onLoadImage(url, () => {
+          let desc = {};
             if (data.meta.description) {
               // get json from description
               try {
@@ -32,13 +42,15 @@ function loadSlideshow(interval) {
             const alignHor = desc.photoFrame.horizontal || "center";
             const size = desc.photoFrame.size || "cover";
             console.log('Image alignment x, y:', alignHor, alignVert);
+            //TODO: slideshow-image/backdrop1 vs slideshow-image/backdrop2
             $('#slideshow-image').css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert).css('background-size', size);
             $('#slideshow-backdrop').css('backgroundImage', 'url(' + url_blurred + ')').css('background-position-x', alignHor).css('background-position-y', alignVert);
             console.log('Set current image');
-          };
-          img.src = url;
         };
-        img_blurred.src = url_blurred;
+        Promise.all(promises).then(() => {
+          //both images loaded...
+          //TODO: divs 1b-n vs divs 2b-n handling
+        });
       },
       error: (data) => {
         console.error('Could not load next media', data)
