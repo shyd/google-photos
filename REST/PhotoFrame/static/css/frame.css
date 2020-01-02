@@ -244,7 +244,7 @@ p .gp-button {
   background-repeat: no-repeat;
 }
 
-#slideshow-backdrop-a, #slideshow-backdrop-a {
+#slideshow-backdrop-a, #slideshow-backdrop-b {
   z-index: 998;
   background-size: cover;
   background-position: center;
