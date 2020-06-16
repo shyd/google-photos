@@ -36,6 +36,40 @@ Possible fields are:
 }
 ```
 
+## Nginx Setup as Reverse Proxy on a Raspberry Pi with Docker
+
+Copy `nginx/pf-startup.html` to `/usr/share/nginx/html/pf-startup.html` to a beautiful startup page instead of the default error page.
+
+Copy `nginx/proxy.conf` to `/etc/nginx/conf.d/proxy.conf` to setup the reverse proxy.
+
+Change the port mapping in docker from 8080:8080 to 8081:8080 to separate the ports.
+
+## Raspberry Pi Setup
+
+### OS
+
+Install a fresh Raspberry Pi OS with Desktop. <https://www.raspberrypi.org/downloads/raspberry-pi-os/>
+
+### Docker
+
+Install Docker from <https://docs.docker.com/engine/install/debian/> in order to run the prebuilt container.
+
+### Chromium
+
+Install `unclutter` to hide the cursor and `chromium-browser` as photo frame frontend.
+Let a user auto-login and change `/etc/xdg/lxsession/LXDE-pi/autostart` to this:
+```@lxpanel --profile LXDE-pi
+@pcmanfm --desktop --profile LXDE-pi
+#@xscreensaver -no-splash
+@xset s off
+@xset -dpms
+@xset s noblank
+@chromium-browser --start-fullscreen --enable-auto-reload --noerrdialogs --check-for-update-interval=31536000 --app=http://127.0.0.1:8080/slideshow
+@unclutter -idle 1
+```
+
+Now everything should run by default.
+
 ## App Overview
 This web app is an online photo frame that allows users to load photos from a search, an album or the library and then show these images in a full screen slideshow.
 
