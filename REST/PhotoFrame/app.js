@@ -207,6 +207,7 @@ app.get('/auth/google', passport.authenticate('google', {
   failureFlash: true,  // Display errors to the user.
   session: true,
   accessType: 'offline',
+  prompt: 'consent',
 }));
 
 // Callback receiver for the OAuth process after log in.
@@ -539,7 +540,7 @@ async function refreshPreloadedMedia(req) {
       logger.error('Couldn\'t update, no parameters found.');
     }
   } else {
-    logger.verbose('Refresh of preloaded media not necessary')
+    logger.verbose('Refresh of preloaded media not necessary, ' + (((storedStatus.lastChecked + interval*60)-now)/60).toFixed(2) + ' minutes to go!')
   }
 }
 
@@ -634,7 +635,12 @@ app.get('/getNextMedia', async (req, res) => {
         await mediaItemStorage.setItem(userId, queue);
       }
     }
-    res.status(200).send({meta: next, filename: next.id + '.jpg', filenameBlurred: next.id + config.blurredSuffix + '.jpg'});
+    try {
+      res.status(200).send({meta: next, filename: next.id + '.jpg', filenameBlurred: next.id + config.blurredSuffix + '.jpg'});
+    } catch(err) {
+      console.warn(err);
+      res.status(500).send({error: err});
+    }
   } else {
     res.status(500).send({error: 'Cannot get queue data.'});
   }
