@@ -52,7 +52,7 @@ Install a fresh Raspberry Pi OS with Desktop. <https://www.raspberrypi.org/downl
 
 ### Docker
 
-Install Docker from <https://docs.docker.com/engine/install/debian/> in order to run the prebuilt container.
+Install Docker from <https://docs.docker.com/engine/install/debian/> in order to run the prebuilt container. Also install `docker-compose` if you wish to use the yml: `apt-get install docker-compose`.
 
 ### Chromium
 
