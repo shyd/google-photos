@@ -84,7 +84,7 @@ dtparam=pwr_led_trigger=none
 dtparam=pwr_led=activelow=off
 ```
 
-In case the PWR LED stay lid, adding this to `/etc/rc.local` helped:
+In case the PWR LED stays on, adding this to `/etc/rc.local` helped:
 
 ```
 #sudo sh -c 'echo none > /sys/class/leds/led0/trigger'
