@@ -52,13 +52,14 @@ Install a fresh Raspberry Pi OS with Desktop. <https://www.raspberrypi.org/downl
 
 ### Docker
 
-Install Docker from <https://docs.docker.com/engine/install/debian/> in order to run the prebuilt container.
+Install Docker from <https://docs.docker.com/engine/install/debian/> in order to run the prebuilt container. Also install `docker-compose` if you wish to use the yml: `apt-get install docker-compose`.
 
 ### Chromium
 
 Install `unclutter` to hide the cursor and `chromium-browser` as photo frame frontend.
 Let a user auto-login and change `/etc/xdg/lxsession/LXDE-pi/autostart` to this:
-```@lxpanel --profile LXDE-pi
+```
+@lxpanel --profile LXDE-pi
 @pcmanfm --desktop --profile LXDE-pi
 #@xscreensaver -no-splash
 @xset s off
@@ -69,6 +70,28 @@ Let a user auto-login and change `/etc/xdg/lxsession/LXDE-pi/autostart` to this:
 ```
 
 Now everything should run by default.
+
+### LED Setup
+
+In order to turn off the LEDs of the RPi, add the following lines to `/boot/config.txt`:
+```
+# Disable Activity LED
+dtparam=act_led_trigger=none
+dtparam=act_led_activelow=off
+
+# Disable Power LED
+dtparam=pwr_led_trigger=none
+dtparam=pwr_led=activelow=off
+```
+
+In case the PWR LED stay lid, adding this to `/etc/rc.local` helped:
+
+```
+#sudo sh -c 'echo none > /sys/class/leds/led0/trigger'
+#sudo sh -c 'echo none > /sys/class/leds/led1/trigger'
+#sudo sh -c 'echo 0 > /sys/class/leds/led0/brightness'
+sudo sh -c 'echo 0 > /sys/class/leds/led1/brightness'
+```
 
 ## App Overview
 This web app is an online photo frame that allows users to load photos from a search, an album or the library and then show these images in a full screen slideshow.
