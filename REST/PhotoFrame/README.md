@@ -44,6 +44,12 @@ Copy `nginx/proxy.conf` to `/etc/nginx/conf.d/proxy.conf` to setup the reverse p
 
 Change the port mapping in docker from 8080:8080 to 8081:8080 to separate the ports.
 
+In short:
+```
+wget https://raw.githubusercontent.com/shyd/google-photos/master/REST/PhotoFrame/nginx/pf-startup.html -O /usr/share/nginx/html/pf-startup.html
+wget https://raw.githubusercontent.com/shyd/google-photos/master/REST/PhotoFrame/nginx/proxy.conf -O /etc/nginx/conf.d/proxy.conf
+```
+
 ## Raspberry Pi Setup
 
 ### OS
