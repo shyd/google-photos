@@ -663,7 +663,8 @@ async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, user
       `Getting Media: ${JSON.stringify(baseUrl)}`);
 
     const options = {
-      url: baseUrl + '=w2000-d',
+      //url: baseUrl + '=w2000-d',
+      url: baseUrl,
       encoding: null
     };
 
