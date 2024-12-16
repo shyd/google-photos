@@ -14,7 +14,7 @@
 
 // This file contains the configuration options for this sample app.
 
-const config = {};
+export const config = {};
 
 // The OAuth client ID from the Google Developers console.
 //config.oAuthClientID = 'ADD YOUR CLIENT ID';
@@ -68,5 +68,3 @@ config.blurredSuffix = '_blurred';
 
 // Number of maximum retries to refresh the access token
 config.maxRetries = 3;
-
-module.exports = config;
