@@ -47,7 +47,8 @@ function loadSlideshow(interval) {
             desc.photoFrame = desc.photoFrame || {};
             const alignVert = desc.photoFrame.vertical || "center";
             const alignHor = desc.photoFrame.horizontal || "center";
-            const size = desc.photoFrame.size || "cover";
+            const isPortrait = data.meta.mediaMetadata.width <= data.meta.mediaMetadata.height;
+            const size = desc.photoFrame.size || isPortrait ? "contain" : "cover";
             console.log('Image alignment x, y:', alignHor, alignVert);
             if (slideshowCurrentImage === 0) {
               slideshowImageB.css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert).css('background-size', size);
