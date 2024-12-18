@@ -19,13 +19,13 @@ export const auth = (passport, refresh) => {
   passport.serializeUser((user, done) => done(null, user));
   passport.deserializeUser((user, done) => done(null, user));
 
-    var strategy = new GoogleOAuthStrategy(
-      {
-        clientID: config.oAuthClientID,
-        clientSecret: config.oAuthclientSecret,
-        callbackURL: config.oAuthCallbackUrl
-      },
-        (accessToken, refreshToken, profile, done) => done(null, {profile, accessToken, refreshToken}));
+  var strategy = new GoogleOAuthStrategy(
+    {
+      clientID: config.oAuthClientID,
+      clientSecret: config.oAuthclientSecret,
+      callbackURL: config.oAuthCallbackUrl
+    },
+    (accessToken, refreshToken, profile, done) => done(null, {profile, accessToken, refreshToken}));
     passport.use(strategy);
     refresh.use(strategy);
 };

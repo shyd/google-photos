@@ -34,7 +34,8 @@ import winston from 'winston';
 //const path = require('path');
 //const sharp = require('sharp');
 import refresh from 'passport-oauth2-refresh';
-import Buffer from 'buffer';
+//import Buffer from 'buffer.Buffer';
+import { Buffer } from 'node:buffer';
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
@@ -64,7 +65,7 @@ app.disable('etag');
 // See the 'best practices' and 'acceptable use policy' in the developer
 // documentation.
 const mediaItemCache = persist.create({
-  dir: 'persist-mediaitemcache/',
+  dir: config.cachePath + '/persist-mediaitemcache/',
   ttl: 3300000,  // 55 minutes
 });
 mediaItemCache.init();
@@ -79,7 +80,7 @@ mediaItemCache.init();
 // Note that this data is only cached temporarily as per the 'best practices' in
 // the developer documentation. Here it expires after 10 minutes.
 const albumCache = persist.create({
-  dir: 'persist-albumcache/',
+  dir: config.cachePath + '/persist-albumcache/',
   ttl: 600000,  // 10 minutes
 });
 albumCache.init();
@@ -222,9 +223,11 @@ app.get('/', (req, res) => {
 // GET request to log out the user.
 // Destroy the current session and redirect back to the log in screen.
 app.get('/logout', (req, res) => {
-  req.logout();
-  req.session.destroy();
-  res.redirect('/');
+  req.logout(function(err) {
+    if (err) { return next(err); }
+    req.session.destroy();
+    res.redirect('/');
+  });
 });
 
 // Star the OAuth login process for Google.
@@ -466,7 +469,7 @@ app.post('/saveConfig', async (req, res) => {
 
   logger.info(`Saving config: ${config}`);
 
-  storage.setItemSync(userId+'.config', {config: config});
+  storage.setItem(userId+'.config', {config: config});
 
   res.status(200).send({});
 });
@@ -574,9 +577,9 @@ async function refreshPreloadedMedia(req) {
 
 // Download new photos in album or search and delete removed media
 async function preloadPhotos(authToken, refreshToken, userId, mediaItems, request) {
-  const storageDir = config.dataPath+'/persist-mediaitemstorage/';
+  const storageDir = config.downloadPath + '/';
   let somethingChanged = false;
-  await fs.mkdir(storageDir + userId, () => {});
+  await fs.mkdir(storageDir + userId, {recursive: true}, () => {});
   for (let i = 0; i < mediaItems.length; i++) {
     const item = mediaItems[i];
     if (!fs.existsSync(storageDir + userId + '/' + item.id + '.jpg') ||
@@ -677,7 +680,7 @@ app.get('/getNextMedia', async (req, res) => {
 app.get('/getNextMedia/:media', async (req, res) => {
   const userId = req.user.profile.id;
   const media = req.params.media;
-  const p = path.resolve(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + media);
+  const p = path.resolve(config.downloadPath + '/' + userId + '/' + media);
   res.status(200).sendFile(p);
 });
 
@@ -696,15 +699,16 @@ async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, user
       encoding: null
     };
 
-    await request.get(options)
-      .then(function (res) {
-        const buffer = Buffer.from(res, 'utf8');
-        fs.writeFileSync(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + itemId + '.jpg', buffer);
+    await fetch(baseUrl)
+      .then(async function (res) {
+        const arrayBuffer = await res.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        fs.writeFileSync(config.downloadPath + '/' + userId + '/' + itemId + '.jpg', buffer);
         sharp(buffer)
           .blur(1+40/2)
           .toBuffer()
           .then(data => {
-            fs.writeFileSync(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + itemId + config.blurredSuffix + '.jpg', data);
+            fs.writeFileSync(config.downloadPath + '/' + userId + '/' + itemId + config.blurredSuffix + '.jpg', data);
           })
           .catch(err => {
             logger.error('sharp: '+err);
@@ -730,8 +734,8 @@ async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, user
     // If the error is a StatusCodeError, it contains an error.error object that
     // should be returned. It has a name, statuscode and message in the correct
     // format. Otherwise extract the properties.
-    error = err.error.error ||
-      {name: err.name, code: err.statusCode, message: err.message};
+    error = err.error ||
+      {name: err.name, code: err.code, message: err.message};
     logger.error(error);
   }
 
@@ -819,8 +823,8 @@ async function libraryApiSearch(authToken, refreshToken, parameters, req, retrie
     // If the error is a StatusCodeError, it contains an error.error object that
     // should be returned. It has a name, statuscode and message in the correct
     // format. Otherwise extract the properties.
-    error = err.error.error ||
-        {name: err.name, code: err.statusCode, message: err.message};
+    error = err.error ||
+        {name: err.name, code: err.code, message: err.message};
     logger.error(error);
   }
 
@@ -894,8 +898,8 @@ async function libraryApiGetAlbums(authToken, refreshToken, req, retries = confi
     // If the error is a StatusCodeError, it contains an error.error object that
     // should be returned. It has a name, statuscode and message in the correct
     // format. Otherwise extract the properties.
-    error = err.error.error ||
-        {name: err.name, code: err.statusCode, message: err.message};
+    error = err.error ||
+        {name: err.name, code: err.code, message: err.message};
     logger.error(error);
   }
 

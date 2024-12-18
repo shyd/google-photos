@@ -63,6 +63,15 @@ if (process.env.DATA_PATH !== undefined) {
     config.dataPath = process.env.DATA_PATH;
 }
 
+// The path for downloaded pictures
+config.downloadPath = config.dataPath + '/download';
+
+// The path for cache data
+config.cachePath = './cache';
+if (process.env.CACHE_PATH !== undefined) {
+    config.cachePath = process.env.CACHE_PATH;
+}
+
 // Suffix of blurred image filenames
 config.blurredSuffix = '_blurred';
 
