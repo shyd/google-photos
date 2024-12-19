@@ -667,6 +667,7 @@ app.get('/getNextMedia', async (req, res) => {
       }
     }
     try {
+      logger.verbose('Returning next media: ' + next.id);
       res.status(200).send({meta: next, filename: next.id + '.jpg', filenameBlurred: next.id + config.blurredSuffix + '.jpg'});
     } catch(err) {
       console.warn(err);
@@ -716,7 +717,7 @@ async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, user
       });
 
   } catch (err) {
-    if (err.statusCode === 401 && retries > 0) {
+    if (err.status === 401 && retries > 0) {
       let result = {};
       let promiseRequestNew = new Promise(function (resolve, reject) {
         refresh.requestNewAccessToken('google', refreshToken, async function(err, accessToken, refreshToken) {
@@ -805,7 +806,7 @@ async function libraryApiSearch(authToken, refreshToken, parameters, req, retrie
              parameters.pageToken != null);
 
   } catch (err) {
-    if (err.statusCode === 401 && retries > 0) {
+    if (err.status === 401 && retries > 0) {
       let result = {};
       let promiseRequestNew = new Promise(function (resolve, reject) {
         refresh.requestNewAccessToken('google', refreshToken, async function(err, accessToken, refreshToken) {
@@ -879,7 +880,7 @@ async function libraryApiGetAlbums(authToken, refreshToken, req, retries = confi
     } while (parameters.has('pageToken'));
 
   } catch (err) {
-    if (err.statusCode === 401 && retries > 0) {
+    if (err.status === 401 && retries > 0) {
       let result = {};
       let promiseRequestNew = new Promise(function (resolve, reject) {
         refresh.requestNewAccessToken('google', refreshToken, {}, async function(err, accessToken, refreshToken) {
