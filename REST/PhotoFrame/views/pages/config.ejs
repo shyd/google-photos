@@ -7,26 +7,51 @@
 		<!-- Numeric Textfield with Floating Label -->
 		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
 			<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" required id="input-interval">
-			<label class="mdl-textfield__label" for="sample4">Slideshow Interval [s]</label>
-			<span class="mdl-textfield__error">Input is not a number!</span>
-		</div>
-		<!-- Numeric Textfield with Floating Label -->
-		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-			<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" required id="input-duration">
-			<label class="mdl-textfield__label" for="sample4">Transition Duration [ms]</label>
+			<label class="mdl-textfield__label" for="input-interval">Slideshow Interval [s]</label>
 			<span class="mdl-textfield__error">Input is not a number!</span>
 		</div>
 		<!-- Numeric Textfield with Floating Label -->
 		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
 			<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" required id="input-update">
-			<label class="mdl-textfield__label" for="sample4">Minimum time to refresh album or search [m]</label>
+			<label class="mdl-textfield__label" for="input-update">Minimum time to refresh album or search [m]</label>
 			<span class="mdl-textfield__error">Input is not a number!</span>
 		</div>
 		<!-- Numeric Textfield with Floating Label -->
 		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
 			<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" required id="input-cycles">
-			<label class="mdl-textfield__label" for="sample4">Cycles after Queue will be randomized</label>
+			<label class="mdl-textfield__label" for="input-cycles">Cycles after Queue will be randomized</label>
 			<span class="mdl-textfield__error">Input is not a number!</span>
+		</div>
+		<!-- Checkbox with Floating Label -->
+		<label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="checkbox-mqtt" id="label-mqtt">
+			<input type="checkbox" id="checkbox-mqtt" class="mdl-checkbox__input">
+			<span class="mdl-checkbox__label">Enable MQTT</span>
+		</label>
+		<!-- Textfield with Floating Label -->
+		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+			<input class="mdl-textfield__input" type="text" required id="input-mqtt-host">
+			<label class="mdl-textfield__label" for="input-mqtt-host">Host</label>
+		</div>
+		<!-- Numeric Textfield with Floating Label -->
+		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+			<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" required id="input-mqtt-port">
+			<label class="mdl-textfield__label" for="input-mqtt-port">Port</label>
+			<span class="mdl-textfield__error">Input is not a number!</span>
+		</div>
+		<!-- Textfield with Floating Label -->
+		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+			<input class="mdl-textfield__input" type="text" id="input-mqtt-username">
+			<label class="mdl-textfield__label" for="input-mqtt-username">Username</label>
+		</div>
+		<!-- Textfield with Floating Label -->
+		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+			<input class="mdl-textfield__input" type="password" id="input-mqtt-password">
+			<label class="mdl-textfield__label" for="input-mqtt-password">Password</label>
+		</div>
+		<!-- Textfield with Floating Label -->
+		<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+			<input class="mdl-textfield__input" type="text" required id="input-mqtt-topic">
+			<label class="mdl-textfield__label" for="input-mqtt-topic">Topic</label>
 		</div>
 
 		<div class="floating-button">

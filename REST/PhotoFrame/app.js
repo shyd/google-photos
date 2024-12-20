@@ -44,6 +44,7 @@ import sharp from 'sharp';
 import {auth} from './auth.js';
 import {config} from './config.js';
 import {fileURLToPath} from 'url';
+import e from 'express';
 
 const app = express();
 const fileStore = sessionFileStore(session);
@@ -173,6 +174,14 @@ app.use(
   express.static(
     fileURLToPath(
       new URL('./node_modules/material-design-lite/dist/', import.meta.url)
+    ),
+  )
+);
+app.use(
+  '/mqtt',
+  express.static(
+    fileURLToPath(
+      new URL('./node_modules/mqtt/dist/', import.meta.url)
     ),
   )
 );
@@ -459,7 +468,15 @@ app.get('/getConfig', async (req, res) => {
     // No data is stored yet for the user. Return an empty response.
     // The user is likely new.
     logger.verbose('No config data.');
-    res.status(200).send({config: {duration: 366, interval: 30, update: 120, cycles: 1}});
+    const mqttConfig = {
+      enabled: false,
+      host: "",
+      port: 9001,
+      topic: "photoframe/nextPicture",
+      username: "",
+      password: ""
+    }
+    res.status(200).send({config: {duration: 366, interval: 30, update: 120, cycles: 1, mqtt: mqttConfig}});
   }
 });
 
@@ -694,13 +711,7 @@ async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, user
     logger.info(
       `Getting Media: ${JSON.stringify(baseUrl)}`);
 
-    const options = {
-      //url: baseUrl + '=w2000-d',
-      url: baseUrl,
-      encoding: null
-    };
-
-    await fetch(baseUrl)
+    await fetch(baseUrl + '=d')
       .then(async function (res) {
         const arrayBuffer = await res.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
