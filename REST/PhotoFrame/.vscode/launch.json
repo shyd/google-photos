@@ -6,13 +6,13 @@
     "configurations": [
         {
             "name": "Launch Program",
-            "program": "${workspaceFolder}/REST/PhotoFrame/app.js",
+            "program": "${workspaceFolder}/app.js",
             "request": "launch",
             "skipFiles": [
                 "<node_internals>/**"
             ],
             "type": "node",
-            "envFile": "${workspaceFolder}/REST/PhotoFrame/.env",
+            "envFile": "${workspaceFolder}/.env",
             "console": "integratedTerminal",
         }
     ]
