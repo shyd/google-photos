@@ -1,12 +1,16 @@
+let client = null;
+
 let slideshowImageA;
 let slideshowBackdropA;
 let slideshowImageB;
 let slideshowBackdropB;
 let slideshowCurrentImage;
+let slideshowContainerA;
+let slideshowContainerB;
 
 function instantInterval(handler, timeout) {
   handler();
-  setInterval(handler, timeout);
+  return setInterval(handler, timeout);
 }
 
 function onLoadImage (url, callback) {
@@ -24,13 +28,13 @@ function loadSlideshow(interval) {
   let pos = 0;
   const img = new Image();
   const img_blurred = new Image();
-  instantInterval(function () {
+  const fn = () => {
     $.ajax({
       type: 'GET',
       url: '/getNextMedia',
       dataType: 'json',
       success: (data) => {
-        console.log('trigger preload');
+        console.log('trigger preload:', data.filename);
         const url = '/getNextMedia/' + data.filename;
         const url_blurred = '/getNextMedia/' + data.filenameBlurred;
         const promises = [];
@@ -47,8 +51,10 @@ function loadSlideshow(interval) {
             desc.photoFrame = desc.photoFrame || {};
             const alignVert = desc.photoFrame.vertical || "center";
             const alignHor = desc.photoFrame.horizontal || "center";
-            const size = desc.photoFrame.size || "cover";
+            const isPortrait = data.meta.mediaMetadata.width <= data.meta.mediaMetadata.height;
+            const size = desc.photoFrame.size || isPortrait ? "contain" : "cover";
             console.log('Image alignment x, y:', alignHor, alignVert);
+            console.log('Set image in container:', slideshowCurrentImage);
             if (slideshowCurrentImage === 0) {
               slideshowImageB.css('backgroundImage', 'url(' + url + ')').css('background-position-x', alignHor).css('background-position-y', alignVert).css('background-size', size);
               slideshowBackdropB.css('backgroundImage', 'url(' + url_blurred + ')').css('background-position-x', alignHor).css('background-position-y', alignVert);
@@ -60,16 +66,21 @@ function loadSlideshow(interval) {
         }));
         Promise.all(promises).then(() => {
           //both images loaded...
+          console.log('Both images loaded, current container:', slideshowCurrentImage);
           if (slideshowCurrentImage === 0) {
-            slideshowImageB.css('zIndex', 999);
-            slideshowBackdropB.css('zIndex', 998);
-            slideshowImageA.css('zIndex', 991);
-            slideshowBackdropA.css('zIndex', 990);
+            // slideshowImageB.css('zIndex', 999);
+            // slideshowBackdropB.css('zIndex', 998);
+            // slideshowImageA.css('zIndex', 991);
+            // slideshowBackdropA.css('zIndex', 990);
+            slideshowContainerA.css('zIndex', 998);
+            slideshowContainerB.css('zIndex', 999);
           } else {
-            slideshowImageA.css('zIndex', 999);
-            slideshowBackdropA.css('zIndex', 998);
-            slideshowImageB.css('zIndex', 991);
-            slideshowBackdropB.css('zIndex', 990);
+            // slideshowImageA.css('zIndex', 999);
+            // slideshowBackdropA.css('zIndex', 998);
+            // slideshowImageB.css('zIndex', 991);
+            // slideshowBackdropB.css('zIndex', 990);
+            slideshowContainerA.css('zIndex', 999);
+            slideshowContainerB.css('zIndex', 998);
           }
           slideshowCurrentImage = 1-slideshowCurrentImage;
         });
@@ -78,7 +89,13 @@ function loadSlideshow(interval) {
         console.error('Could not load next media', data)
       }
     });
-  }, interval*1000);
+  };
+  let timerId = instantInterval(fn, interval*1000);
+  client.on("message", (topic, message) => {
+    console.log(topic, message.toString());
+    clearInterval(timerId);
+    timerId = instantInterval(fn, interval*1000);
+  });
 }
 
 // Makes a backend request to display the queue of photos currently loaded into
@@ -97,6 +114,26 @@ function initSlideshow() {
       $('#slideshow-image').css('transition', 'background-image '+data.config.duration+'ms ease-in-out');
       $('#slideshow-backdrop').css('-webkit-transition', 'background-image '+data.config.duration+'ms ease-in-out');
       $('#slideshow-backdrop').css('transition', 'background-image '+data.config.duration+'ms ease-in-out');*/
+
+      if (data.config.mqtt.enabled) {
+        client = mqtt.connect('ws://' + data.config.mqtt.host + ':' + data.config.mqtt.port, {
+          reconnectPeriod: 1000, // Reconnect every 1 second
+          connectTimeout: 4000,  // Wait 4 seconds before timing out
+          username: data.config.mqtt.username,
+          password: data.config.mqtt.password
+        });
+        client.on('connect', () => {
+          console.log('Connected to MQTT Broker');
+
+          // Subscribe to a topic
+          client.subscribe(data.config.mqtt.topic, (err) => {
+              if (!err) {
+                  console.log('Subscribed successfully');
+              }
+          });
+        });
+        console.log(client);
+      }
       loadSlideshow(data.config.interval);
       hideLoadingDialog();
       console.log('Loaded queue.');
@@ -116,9 +153,11 @@ $(document).ready(() => {
   slideshowBackdropA = $('#slideshow-backdrop-a');
   slideshowImageB = $('#slideshow-image-b');
   slideshowBackdropB = $('#slideshow-backdrop-b');
+  slideshowContainerA = $('#slideshow-container-a');
+  slideshowContainerB = $('#slideshow-container-b');
 
-  slideshowImageB.css('zIndex', 991);
-  slideshowBackdropB.css('zIndex', 990);
+  // slideshowImageB.css('zIndex', 991);
+  // slideshowBackdropB.css('zIndex', 990);
   slideshowCurrentImage = 0;
 
   // Clicking the 'view fullscreen' button opens the gallery from the first

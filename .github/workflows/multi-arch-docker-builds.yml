@@ -1,0 +1,40 @@
+name: CI PhotoFrame
+
+on:
+  push:
+    branches: [ develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set tag
+      id: vars
+      run: echo "tag=$(cat ./REST/PhotoFrame/package.json | grep 'version' | cut -d '"' -f4)" >> $GITHUB_OUTPUT
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USER }}
+        password: ${{ secrets.DOCKER_PASS }}
+
+    - name: Build and push
+      id: docker_build
+      uses: docker/build-push-action@v2
+      with:
+        context: ./REST/PhotoFrame
+        file: ./REST/PhotoFrame/Dockerfile
+        push: true
+        platforms: "linux/amd64,linux/arm64,linux/arm/v7"
+        tags: |
+          ${{ secrets.DOCKER_USER }}/photoframe:${{ steps.vars.outputs.tag }}
+          ${{ secrets.DOCKER_USER }}/photoframe:latest

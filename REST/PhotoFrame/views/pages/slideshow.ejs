@@ -1,4 +1,4 @@
-<% include ../partials/head %>
+<%- include('../partials/head') %>
 <section class="sample-content">
 	<div>
 		<h2>Photo frame slideshow</h2>
@@ -12,12 +12,12 @@
 	</div>
 	<div id="slideshow-container" class="fullscreen">
 		<div id="slideshow-container-a" class="fullscreen">
-			<div id="slideshow-image-a" class="fullscreen"></div>
 			<div id="slideshow-backdrop-a" class="fullscreen"></div>
+			<div id="slideshow-image-a" class="fullscreen"></div>
 		</div>
 		<div id="slideshow-container-b" class="fullscreen">
-			<div id="slideshow-image-b" class="fullscreen"></div>
 			<div id="slideshow-backdrop-b" class="fullscreen"></div>
+			<div id="slideshow-image-b" class="fullscreen"></div>
 		</div>
 	</div>
 	<div id="images_empty" style="display:none">
@@ -33,9 +33,10 @@
 	</button>
 </div>
 
-<% include ../partials/dialogs %>
+<%- include('../partials/dialogs') %>
 
-<% include ../partials/js %>
+<%- include('../partials/js') %>
+<script src="/mqtt/mqtt.min.js"></script>
 <script src="/js/slideshow.js"></script>
 
-<% include ../partials/footer %>
+<%- include('../partials/footer') %>

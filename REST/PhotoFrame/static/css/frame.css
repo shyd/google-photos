@@ -237,15 +237,23 @@ p .gp-button {
   z-index: 1000;
 }
 
-#slideshow-image-a, #slideshow-image-b {
+#slideshow-container-a {
   z-index: 999;
+}
+
+#slideshow-container-b {
+  z-index: 998;
+}
+
+#slideshow-image-a, #slideshow-image-b {
+  /* z-index: 999; */
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 }
 
 #slideshow-backdrop-a, #slideshow-backdrop-b {
-  z-index: 998;
+  /* z-index: 998; */
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

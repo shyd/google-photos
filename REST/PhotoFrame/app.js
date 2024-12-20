@@ -16,23 +16,35 @@
 
 // [START app]
 
-const async = require('async');
-const bodyParser = require('body-parser');
-const config = require('./config.js');
-const express = require('express');
-const expressWinston = require('express-winston');
-const http = require('http');
-const persist = require('node-persist');
-const request = require('request-promise');
-const session = require('express-session');
-const sessionFileStore = require('session-file-store');
-const uuid = require('uuid');
-const winston = require('winston');
-const refresh = require('passport-oauth2-refresh');
-const Buffer = require('buffer').Buffer;
-const fs = require('fs');
-const path = require('path');
-const sharp = require('sharp');
+import bodyParser from 'body-parser';
+import express from 'express';
+import expressWinston from 'express-winston';
+import fetch from 'node-fetch';
+import http from 'http';
+import passport from 'passport';
+import persist from 'node-persist';
+import session from 'express-session';
+import sessionFileStore from 'session-file-store';
+import winston from 'winston';
+
+// modifications shyd
+//const refresh = require('passport-oauth2-refresh');
+//const Buffer = require('buffer').Buffer;
+//const fs = require('fs');
+//const path = require('path');
+//const sharp = require('sharp');
+import refresh from 'passport-oauth2-refresh';
+//import Buffer from 'buffer.Buffer';
+import { Buffer } from 'node:buffer';
+import fs from 'fs';
+import path from 'path';
+import sharp from 'sharp';
+// end modifications shyd
+
+import {auth} from './auth.js';
+import {config} from './config.js';
+import {fileURLToPath} from 'url';
+import e from 'express';
 
 const app = express();
 const fileStore = sessionFileStore(session);
@@ -41,6 +53,8 @@ const server = http.Server(app);
 // Use the EJS template engine
 app.set('view engine', 'ejs');
 
+// Disable browser-side caching for demo purposes.
+app.disable('etag');
 
 // Set up a cache for media items that expires after 55 minutes.
 // This caches the baseUrls for media items that have been selected
@@ -52,7 +66,7 @@ app.set('view engine', 'ejs');
 // See the 'best practices' and 'acceptable use policy' in the developer
 // documentation.
 const mediaItemCache = persist.create({
-  dir: 'persist-mediaitemcache/',
+  dir: config.cachePath + '/persist-mediaitemcache/',
   ttl: 3300000,  // 55 minutes
 });
 mediaItemCache.init();
@@ -67,7 +81,7 @@ mediaItemCache.init();
 // Note that this data is only cached temporarily as per the 'best practices' in
 // the developer documentation. Here it expires after 10 minutes.
 const albumCache = persist.create({
-  dir: 'persist-albumcache/',
+  dir: config.cachePath + '/persist-albumcache/',
   ttl: 600000,  // 10 minutes
 });
 albumCache.init();
@@ -88,8 +102,6 @@ const mediaItemStorage = persist.create({dir: config.dataPath+'/persist-mediaite
 mediaItemStorage.init();
 
 // Set up OAuth 2.0 authentication through the passport.js library.
-const passport = require('passport');
-const auth = require('./auth');
 auth(passport, refresh);
 
 // Set up a session middleware to handle user sessions.
@@ -132,8 +144,7 @@ if (process.env.DEBUG) {
         ],
         winstonInstance: logger
   }));
-  // Enable request debugging.
-  require('request-promise').debug = true;
+
 } else {
   // By default, only print all 'verbose' log level messages or below.
   logger.level = 'verbose';
@@ -142,13 +153,38 @@ if (process.env.DEBUG) {
 
 // Set up static routes for hosted libraries.
 app.use(express.static('static'));
-app.use('/js', express.static(__dirname + '/node_modules/jquery/dist/'));
+app.use('/js',
+  express.static(
+    fileURLToPath(
+      new URL('./node_modules/jquery/dist/', import.meta.url)
+    ),
+  )
+);
+
 app.use(
-    '/fancybox',
-    express.static(__dirname + '/node_modules/@fancyapps/fancybox/dist/'));
+  '/fancybox',
+  express.static(
+    fileURLToPath(
+      new URL('./node_modules/@fancyapps/fancybox/dist/', import.meta.url)
+    ),
+  )
+);
 app.use(
-    '/mdlite',
-    express.static(__dirname + '/node_modules/material-design-lite/dist/'));
+  '/mdlite',
+  express.static(
+    fileURLToPath(
+      new URL('./node_modules/material-design-lite/dist/', import.meta.url)
+    ),
+  )
+);
+app.use(
+  '/mqtt',
+  express.static(
+    fileURLToPath(
+      new URL('./node_modules/mqtt/dist/', import.meta.url)
+    ),
+  )
+);
 
 
 // Parse application/json request data.
@@ -196,9 +232,11 @@ app.get('/', (req, res) => {
 // GET request to log out the user.
 // Destroy the current session and redirect back to the log in screen.
 app.get('/logout', (req, res) => {
-  req.logout();
-  req.session.destroy();
-  res.redirect('/');
+  req.logout(function(err) {
+    if (err) { return next(err); }
+    req.session.destroy();
+    res.redirect('/');
+  });
 });
 
 // Star the OAuth login process for Google.
@@ -218,7 +256,9 @@ app.get(
     (req, res) => {
       // User has logged in.
       logger.info('User has logged in.');
-      res.redirect('/');
+      req.session.save(() => {
+        res.redirect('/');
+      });
     });
 
 // Loads the search page if the user is authenticated.
@@ -357,7 +397,7 @@ app.get('/getAlbums', async (req, res) => {
       // The cache implementation automatically clears the data when the TTL is
       // reached.
       res.status(200).send(data);
-      albumCache.setItemSync(userId, data);
+      albumCache.setItem(userId, data);
     }
   }
 });
@@ -428,7 +468,15 @@ app.get('/getConfig', async (req, res) => {
     // No data is stored yet for the user. Return an empty response.
     // The user is likely new.
     logger.verbose('No config data.');
-    res.status(200).send({config: {duration: 366, interval: 30, update: 120, cycles: 1}});
+    const mqttConfig = {
+      enabled: false,
+      host: "",
+      port: 9001,
+      topic: "photoframe/nextPicture",
+      username: "",
+      password: ""
+    }
+    res.status(200).send({config: {duration: 366, interval: 30, update: 120, cycles: 1, mqtt: mqttConfig}});
   }
 });
 
@@ -438,7 +486,7 @@ app.post('/saveConfig', async (req, res) => {
 
   logger.info(`Saving config: ${config}`);
 
-  storage.setItemSync(userId+'.config', {config: config});
+  storage.setItem(userId+'.config', {config: config});
 
   res.status(200).send({});
 });
@@ -477,10 +525,10 @@ function returnPhotos(res, userId, data, searchParameter) {
     delete searchParameter.pageSize;
 
     // Cache the media items that were loaded temporarily.
-    mediaItemCache.setItemSync(userId, data.photos);
+    mediaItemCache.setItem(userId, data.photos);
     // Store the parameters that were used to load these images. They are used
     // to resubmit the query after the cache expires.
-    storage.setItemSync(userId, {parameters: searchParameter});
+    storage.setItem(userId, {parameters: searchParameter});
 
     // Return the photos and parameters back int the response.
     res.status(200).send({photos: data.photos, parameters: searchParameter});
@@ -491,9 +539,9 @@ function returnPhotos(res, userId, data, searchParameter) {
 function returnError(res, data) {
   // Return the same status code that was returned in the error or use 500
   // otherwise.
-  const statusCode = data.error.code || 500;
+  const statusCode = data.error.status || 500;
   // Return the error.
-  res.status(statusCode).send(data.error);
+  res.status(statusCode).send(JSON.stringify(data.error));
 }
 
 // Constructs a date object required for the Library API.
@@ -546,9 +594,9 @@ async function refreshPreloadedMedia(req) {
 
 // Download new photos in album or search and delete removed media
 async function preloadPhotos(authToken, refreshToken, userId, mediaItems, request) {
-  const storageDir = config.dataPath+'/persist-mediaitemstorage/';
+  const storageDir = config.downloadPath + '/';
   let somethingChanged = false;
-  await fs.mkdir(storageDir + userId, () => {});
+  await fs.mkdir(storageDir + userId, {recursive: true}, () => {});
   for (let i = 0; i < mediaItems.length; i++) {
     const item = mediaItems[i];
     if (!fs.existsSync(storageDir + userId + '/' + item.id + '.jpg') ||
@@ -636,6 +684,7 @@ app.get('/getNextMedia', async (req, res) => {
       }
     }
     try {
+      logger.verbose('Returning next media: ' + next.id);
       res.status(200).send({meta: next, filename: next.id + '.jpg', filenameBlurred: next.id + config.blurredSuffix + '.jpg'});
     } catch(err) {
       console.warn(err);
@@ -649,7 +698,7 @@ app.get('/getNextMedia', async (req, res) => {
 app.get('/getNextMedia/:media', async (req, res) => {
   const userId = req.user.profile.id;
   const media = req.params.media;
-  const p = path.resolve(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + media);
+  const p = path.resolve(config.downloadPath + '/' + userId + '/' + media);
   res.status(200).sendFile(p);
 });
 
@@ -662,21 +711,16 @@ async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, user
     logger.info(
       `Getting Media: ${JSON.stringify(baseUrl)}`);
 
-    const options = {
-      //url: baseUrl + '=w2000-d',
-      url: baseUrl,
-      encoding: null
-    };
-
-    await request.get(options)
-      .then(function (res) {
-        const buffer = Buffer.from(res, 'utf8');
-        fs.writeFileSync(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + itemId + '.jpg', buffer);
+    await fetch(baseUrl + '=d')
+      .then(async function (res) {
+        const arrayBuffer = await res.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        fs.writeFileSync(config.downloadPath + '/' + userId + '/' + itemId + '.jpg', buffer);
         sharp(buffer)
           .blur(1+40/2)
           .toBuffer()
           .then(data => {
-            fs.writeFileSync(config.dataPath+'/persist-mediaitemstorage/' + userId + '/' + itemId + config.blurredSuffix + '.jpg', data);
+            fs.writeFileSync(config.downloadPath + '/' + userId + '/' + itemId + config.blurredSuffix + '.jpg', data);
           })
           .catch(err => {
             logger.error('sharp: '+err);
@@ -684,7 +728,7 @@ async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, user
       });
 
   } catch (err) {
-    if (err.statusCode === 401 && retries > 0) {
+    if (err.status === 401 && retries > 0) {
       let result = {};
       let promiseRequestNew = new Promise(function (resolve, reject) {
         refresh.requestNewAccessToken('google', refreshToken, async function(err, accessToken, refreshToken) {
@@ -702,8 +746,8 @@ async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, user
     // If the error is a StatusCodeError, it contains an error.error object that
     // should be returned. It has a name, statuscode and message in the correct
     // format. Otherwise extract the properties.
-    error = err.error.error ||
-      {name: err.name, code: err.statusCode, message: err.message};
+    error = err.error ||
+      {name: err.name, code: err.code, message: err.message};
     logger.error(error);
   }
 
@@ -732,12 +776,17 @@ async function libraryApiSearch(authToken, refreshToken, parameters, req, retrie
           `Submitting search with parameters: ${JSON.stringify(parameters)}`);
 
       // Make a POST request to search the library or album
-      const result =
-          await request.post(config.apiEndpoint + '/v1/mediaItems:search', {
-            headers: {'Content-Type': 'application/json'},
-            json: parameters,
-            auth: {'bearer': authToken},
-          });
+      const searchResponse =
+        await fetch(config.apiEndpoint + '/v1/mediaItems:search', {
+          method: 'post',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken
+          },
+          body: JSON.stringify(parameters)
+        });
+
+      const result = await checkStatus(searchResponse);
 
       logger.debug(`Response: ${result}`);
 
@@ -768,7 +817,7 @@ async function libraryApiSearch(authToken, refreshToken, parameters, req, retrie
              parameters.pageToken != null);
 
   } catch (err) {
-    if (err.statusCode === 401 && retries > 0) {
+    if (err.status === 401 && retries > 0) {
       let result = {};
       let promiseRequestNew = new Promise(function (resolve, reject) {
         refresh.requestNewAccessToken('google', refreshToken, async function(err, accessToken, refreshToken) {
@@ -786,8 +835,8 @@ async function libraryApiSearch(authToken, refreshToken, parameters, req, retrie
     // If the error is a StatusCodeError, it contains an error.error object that
     // should be returned. It has a name, statuscode and message in the correct
     // format. Otherwise extract the properties.
-    error = err.error.error ||
-        {name: err.name, code: err.statusCode, message: err.message};
+    error = err.error ||
+        {name: err.name, code: err.code, message: err.message};
     logger.error(error);
   }
 
@@ -801,7 +850,9 @@ async function libraryApiGetAlbums(authToken, refreshToken, req, retries = confi
   let albums = [];
   let nextPageToken = null;
   let error = null;
-  let parameters = {pageSize: config.albumPageSize};
+
+  let parameters = new URLSearchParams();
+  parameters.append('pageSize', config.albumPageSize);
 
   try {
     // Loop while there is a nextpageToken property in the response until all
@@ -810,12 +861,15 @@ async function libraryApiGetAlbums(authToken, refreshToken, req, retries = confi
       logger.verbose(`Loading albums. Received so far: ${albums.length}`);
       // Make a GET request to load the albums with optional parameters (the
       // pageToken if set).
-      const result = await request.get(config.apiEndpoint + '/v1/albums', {
-        headers: {'Content-Type': 'application/json'},
-        qs: parameters,
-        json: true,
-        auth: {'bearer': authToken},
+      const albumResponse = await fetch(config.apiEndpoint + '/v1/albums?' + parameters, {
+        method: 'get',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + authToken
+        },
       });
+
+      const result = await checkStatus(albumResponse);
 
       logger.debug(`Response: ${result}`);
 
@@ -826,13 +880,18 @@ async function libraryApiGetAlbums(authToken, refreshToken, req, retries = confi
 
         albums = albums.concat(items);
       }
-      parameters.pageToken = result.nextPageToken;
+    if(result.nextPageToken){
+      parameters.set('pageToken', result.nextPageToken);
+    }else{
+      parameters.delete('pageToken');
+    }
+
       // Loop until all albums have been listed and no new nextPageToken is
       // returned.
-    } while (parameters.pageToken != null);
+    } while (parameters.has('pageToken'));
 
   } catch (err) {
-    if (err.statusCode === 401 && retries > 0) {
+    if (err.status === 401 && retries > 0) {
       let result = {};
       let promiseRequestNew = new Promise(function (resolve, reject) {
         refresh.requestNewAccessToken('google', refreshToken, {}, async function(err, accessToken, refreshToken) {
@@ -851,13 +910,41 @@ async function libraryApiGetAlbums(authToken, refreshToken, req, retries = confi
     // If the error is a StatusCodeError, it contains an error.error object that
     // should be returned. It has a name, statuscode and message in the correct
     // format. Otherwise extract the properties.
-    error = err.error.error ||
-        {name: err.name, code: err.statusCode, message: err.message};
+    error = err.error ||
+        {name: err.name, code: err.code, message: err.message};
     logger.error(error);
   }
 
   logger.info('Albums loaded.');
   return {albums, error};
+}
+
+// Return the body as JSON if the request was successful, or thrown a StatusError.
+async function checkStatus(response){
+  if (!response.ok){
+    // Throw a StatusError if a non-OK HTTP status was returned.
+    let message = "";
+    try{
+          // Try to parse the response body as JSON, in case the server returned a useful response.
+        message = await response.json();
+    } catch( err ){
+      // Ignore if no JSON payload was retrieved and use the status text instead.
+    }
+    throw new StatusError(response.status, response.statusText, message);
+  }
+
+  // If the HTTP status is OK, return the body as JSON.
+  return await response.json();
+}
+
+// Custom error that contains a status, title and a server message.
+class StatusError extends Error {
+  constructor(status, title, serverMessage, ...params) {
+    super(...params)
+    this.status = status;
+    this.statusTitle = title;
+    this.serverMessage= serverMessage;
+  }
 }
 
 // [END app]

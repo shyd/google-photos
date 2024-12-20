@@ -14,7 +14,7 @@
 
 // This file contains the configuration options for this sample app.
 
-const config = {};
+export const config = {};
 
 // The OAuth client ID from the Google Developers console.
 //config.oAuthClientID = 'ADD YOUR CLIENT ID';
@@ -63,10 +63,17 @@ if (process.env.DATA_PATH !== undefined) {
     config.dataPath = process.env.DATA_PATH;
 }
 
+// The path for downloaded pictures
+config.downloadPath = config.dataPath + '/download';
+
+// The path for cache data
+config.cachePath = './cache';
+if (process.env.CACHE_PATH !== undefined) {
+    config.cachePath = process.env.CACHE_PATH;
+}
+
 // Suffix of blurred image filenames
 config.blurredSuffix = '_blurred';
 
 // Number of maximum retries to refresh the access token
 config.maxRetries = 3;
-
-module.exports = config;
