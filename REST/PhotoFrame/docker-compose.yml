@@ -2,7 +2,7 @@ version: '3'
 
 services:
   photo-frame:
-    image: shyd/google-photos
+    image: shyd/photoframe:latest
     ports:
       - "8080:8080"
     env_file:
