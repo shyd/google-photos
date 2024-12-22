@@ -72,6 +72,12 @@ if (process.env.CACHE_PATH !== undefined) {
     config.cachePath = process.env.CACHE_PATH;
 }
 
+// Query postfix to set the image size, default is '=d' for original quality
+config.imageSizeQuery = '=d';
+if (process.env.IMAGE_SIZE_QUERY !== undefined) {
+    config.imageSizeQuery = process.env.IMAGE_SIZE_QUERY;
+}
+
 // Suffix of blurred image filenames
 config.blurredSuffix = '_blurred';
 

@@ -8,6 +8,12 @@ This app is built using [Express.js](https://expressjs.com/) and [Material Desig
 
 ## Docker Compose
 
+Use the compose file:
+
+```
+wget https://raw.githubusercontent.com/shyd/google-photos/develop/REST/PhotoFrame/docker-compose.yml
+```
+
 Create an environtment file `photo-frame.env` with the following options:
 
 ```
@@ -23,7 +29,7 @@ docker-compose up -d
 ```
 
 ## Frame Alignment Settings
-To change image alignment of a specific photo, put in into the Google Photos description as json with CSS settings like `{"photoFrame":{"vertical":"bottom"}}`,  `{"photoFrame":{"horizontal":"left"}}` or activate blurred backdrop for portrait or panorama photos with `{"photoFrame":{"size":"contain"}}`.
+To change image alignment of a specific photo, put in into the Google Photos description as json with CSS settings like `{"photoFrame":{"vertical":"bottom"}}`,  `{"photoFrame":{"horizontal":"left"}}` or activate blurred backdrop for portrait or panorama photos with `{"photoFrame":{"size":"contain"}}`. Blurred backdrop is active by default for square or portait pictures now.
 Possible fields are:
 
 ```
@@ -46,8 +52,8 @@ Change the port mapping in docker from 8080:8080 to 8081:8080 to separate the po
 
 In short:
 ```
-wget https://raw.githubusercontent.com/shyd/google-photos/master/REST/PhotoFrame/nginx/pf-startup.html -O /usr/share/nginx/html/pf-startup.html
-wget https://raw.githubusercontent.com/shyd/google-photos/master/REST/PhotoFrame/nginx/proxy.conf -O /etc/nginx/conf.d/proxy.conf
+sudo wget https://raw.githubusercontent.com/shyd/google-photos/develop/REST/PhotoFrame/nginx/pf-startup.html -O /usr/share/nginx/html/pf-startup.html
+sudo wget https://raw.githubusercontent.com/shyd/google-photos/develop/REST/PhotoFrame/nginx/proxy.conf -O /etc/nginx/conf.d/proxy.conf
 ```
 
 ## Raspberry Pi Setup
@@ -71,7 +77,7 @@ Let a user auto-login and change `/etc/xdg/lxsession/LXDE-pi/autostart` to this:
 @xset s off
 @xset -dpms
 @xset s noblank
-@chromium-browser --start-fullscreen --enable-auto-reload --noerrdialogs --check-for-update-interval=31536000 --app=http://127.0.0.1:8080/slideshow
+@chromium-browser --start-fullscreen --enable-auto-reload --noerrdialogs --check-for-update-interval=31536000 --hide-crash-restore-bubble --app=http://127.0.0.1:8080/slideshow
 @unclutter -idle 1
 ```
 
@@ -79,7 +85,7 @@ Now everything should run by default.
 
 ### LED Setup
 
-In order to turn off the LEDs of the RPi, add the following lines to `/boot/config.txt`:
+In order to turn off the LEDs of the RPi, add the following lines to `/boot/firmware/config.txt`:
 ```
 # Disable Activity LED
 dtparam=act_led_trigger=none

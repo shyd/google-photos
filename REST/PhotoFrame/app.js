@@ -711,7 +711,7 @@ async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, user
     logger.info(
       `Getting Media: ${JSON.stringify(baseUrl)}`);
 
-    await fetch(baseUrl + '=d')
+    await fetch(baseUrl + config.imageSizeQuery)
       .then(async function (res) {
         const arrayBuffer = await res.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
