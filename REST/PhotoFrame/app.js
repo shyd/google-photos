@@ -709,7 +709,7 @@ async function libraryApiGetMedia(authToken, refreshToken, baseUrl, itemId, user
     // Loop while the number of photos threshold has not been met yet
     // and while there is a nextPageToken to load more items.
     logger.info(
-      `Getting Media: ${JSON.stringify(baseUrl)}`);
+      `Getting Media: ${JSON.stringify(baseUrl + config.imageSizeQuery)}`);
 
     await fetch(baseUrl + config.imageSizeQuery)
       .then(async function (res) {
